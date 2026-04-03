@@ -11,7 +11,6 @@ import { runMarketSizing } from "./steps/runMarketSizing";
 import { runCompetitive } from "./steps/runCompetitive";
 import { runPositioning } from "./steps/runPositioning";
 import { runManifesto } from "./steps/runManifesto";
-import { buildStepContext } from "./context-builder";
 
 export const gtmWorkflow = inngest.createFunction(
   {

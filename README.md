@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GTM Planner — AI-Powered Go-To-Market Strategy Tool
 
-## Getting Started
+Enter a website URL. AI researches the company, asks up to 5 clarifying questions, then executes a complete 9-step GTM strategy validated against real sales databases.
 
-First, run the development server:
+## What it does
+
+| Step | Output |
+|---|---|
+| Research | Company profile extracted from your website |
+| Target Markets | Up to 5 best markets ranked by urgency, importance, macro trends |
+| Industry Priority | Per-market: pain points, what you offer, how you work together |
+| ICP | Firmographics + buyer personas per industry (Apollo-ready filters) |
+| Segmentation | Size / geo / industry segments with tier priorities |
+| Market Sizing | Real TAM/SAM/SOM from Apollo.io or Clay (not AI estimates) |
+| Competitive Analysis | Per-segment competitor matrix: domain, location, value prop, where you win |
+| Positioning | Geoffrey Moore statement + per-segment differentiation |
+| Manifesto | Tagline, elevator pitch, messaging pillars |
+
+## Tech stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Inngest** — durable workflow orchestration (each step resumable on failure)
+- **Vercel AI SDK** — multi-provider LLM support with streaming
+- **Firecrawl** — URL scraping with JS rendering
+- **Apollo.io + Clay** — real market sizing validation
+- **Prisma + PostgreSQL** — project persistence
+- **NextAuth.js** — email magic link + Google OAuth
+- **shadcn/ui + Tailwind CSS** — UI components
+
+## Setup
+
+### 1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Fill in `.env.local`:
 
-## Learn More
+| Variable | Where to get it |
+|---|---|
+| `DATABASE_URL` | [Neon](https://neon.tech) free tier — create project, copy connection string |
+| `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` |
+| `ENCRYPTION_SECRET` | Any 32-character random string |
+| `FIRECRAWL_API_KEY` | [firecrawl.dev](https://firecrawl.dev) — free tier (500 scrapes/month) |
+| `NEXTAUTH_URL` | `http://localhost:3000` for local dev |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional — [Google Console](https://console.cloud.google.com) OAuth 2.0 |
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Create database tables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx prisma migrate dev --name init
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run the app
 
-## Deploy on Vercel
+You need two terminals:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Terminal 1 — Next.js app
+npm run dev
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Terminal 2 — Inngest dev server (required for workflow execution)
+npx inngest-cli@latest dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+### 5. Configure your API keys in the app
+
+1. Sign in → **Settings**
+2. Choose your LLM provider (OpenAI / Anthropic / Google Gemini) and paste your API key
+3. Optionally add Apollo.io API key for real market sizing numbers
+
+### 6. Create your first project
+
+Click **New Project** → paste any website URL → the AI does the rest.
+
+---
+
+## LLM tiered routing
+
+When you pick a provider, the system automatically routes tasks by complexity:
+
+| Complexity | Tasks | OpenAI | Anthropic | Google |
+|---|---|---|---|---|
+| Complex | Strategy, competitive analysis, ICP, manifesto | gpt-4o | claude-opus-4-6 | gemini-2.0-pro |
+| Medium | Segmentation, clarifying questions | gpt-4o-mini | claude-sonnet-4-6 | gemini-2.0-flash |
+| Simple | Formatting, summaries | gpt-4o-mini | claude-haiku-4-5 | gemini-2.0-flash |
+
+No configuration needed — it's automatic.
+
+---
+
+## Error handling
+
+Every failure shows a typed error code and a plain-English reason:
+
+- `SCRAPING_ERROR` — URL unreachable or blocked
+- `LLM_INVALID_KEY` — bad API key in Settings
+- `LLM_RATE_LIMIT` — provider rate limit hit (includes retry-after)
+- `APOLLO_AUTH_ERROR` — bad Apollo API key
+- `APOLLO_RATE_LIMIT` — Apollo rate limit
+- `CLAY_TIMEOUT` — Clay search timed out
+- `STEP_DEPENDENCY_ERROR` — a required prior step hasn't completed
+
+---
+
+## Market sizing without Apollo
+
+Steps still complete successfully. TAM/SAM/SOM will show 0 until you add an Apollo.io or Clay API key in Settings. Everything else in the strategy is fully functional without database keys.
+
+---
+
+## Workflow resilience
+
+Workflows are durable via Inngest. If a step fails mid-run, it resumes from that step on the next trigger — it does not restart the entire 9-step workflow from scratch.
