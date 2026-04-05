@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Building2, Users } from "lucide-react";
@@ -30,8 +31,8 @@ function fmt(n: number): string {
 
 const COLORS = ["#7c3aed", "#a855f7", "#c084fc"];
 
-export default function MarketSizingPage({ params }: { params: { projectId: string } }) {
-  const { projectId } = params;
+export default function MarketSizingPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>
@@ -52,13 +53,13 @@ export default function MarketSizingPage({ params }: { params: { projectId: stri
               {/* Total summary */}
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: "TAM", sub: "Total Addressable Market", value: data.totalTAM_companies, color: "violet" },
-                  { label: "SAM", sub: "Serviceable Addressable", value: data.totalSAM_companies, color: "purple" },
-                  { label: "SOM", sub: "Serviceable Obtainable", value: data.totalSOM_companies, color: "fuchsia" },
+                  { label: "TAM", sub: "Total Addressable Market", value: data.totalTAM_companies, colorClass: "text-violet-400" },
+                  { label: "SAM", sub: "Serviceable Addressable", value: data.totalSAM_companies, colorClass: "text-purple-400" },
+                  { label: "SOM", sub: "Serviceable Obtainable", value: data.totalSOM_companies, colorClass: "text-fuchsia-400" },
                 ].map((m) => (
                   <div key={m.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5 text-center">
                     <p className="text-xs text-slate-400 mb-1">{m.sub}</p>
-                    <p className={`text-3xl font-bold text-${m.color}-400`}>{fmt(m.value)}</p>
+                    <p className={`text-3xl font-bold ${m.colorClass}`}>{fmt(m.value)}</p>
                     <p className="text-sm text-slate-500 mt-1">{m.label} Companies</p>
                   </div>
                 ))}

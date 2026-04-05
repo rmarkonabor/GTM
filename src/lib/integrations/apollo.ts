@@ -102,12 +102,8 @@ export async function getMarketSize(
 
   const data = await apolloRequest(apiKey, filters);
 
-  // Apollo returns total_entries in pagination
-  // For companies we use org search; for contacts we use people search
-  const companies = (data as Record<string, { total_entries?: number }>)
-    ?.organizations?.total_entries ?? 0;
-  const contacts = (data as Record<string, { total_entries?: number }>)
-    ?.people?.total_entries ?? 0;
+  const companies = data.organizations_count ?? 0;
+  const contacts = data.people_count ?? 0;
 
   return { companies, contacts, filtersUsed: filters };
 }

@@ -87,6 +87,11 @@ function InfoCard({ icon: Icon, title, content }: { icon: React.ElementType; tit
   );
 }
 
+const COLOR_BG: Record<string, string> = {
+  violet: "bg-violet-400", green: "bg-green-400", blue: "bg-blue-400",
+  red: "bg-red-400", yellow: "bg-yellow-400", purple: "bg-purple-400",
+};
+
 function ListCard({ title, items, color }: { title: string; items: string[]; color: string }) {
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
@@ -94,7 +99,7 @@ function ListCard({ title, items, color }: { title: string; items: string[]; col
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <span className={`h-1.5 w-1.5 rounded-full bg-${color}-400 mt-1.5 shrink-0`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${COLOR_BG[color] ?? "bg-slate-400"} mt-1.5 shrink-0`} />
             {item}
           </li>
         ))}

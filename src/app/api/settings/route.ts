@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { errorResponse } from "@/lib/errors/handlers";
-import { encrypt } from "@/lib/crypto";
+import { encrypt, safeDecrypt } from "@/lib/crypto";
 import { z } from "zod";
 
 const schema = z.object({
@@ -59,8 +59,10 @@ export async function GET() {
 
     // Return whether keys exist (never return the actual keys to client)
     const hasLlm = !!user?.llmPreference;
-    const hasApollo = !!user?.dbPreferences && user.dbPreferences.includes("apollo");
-    const hasClay = !!user?.dbPreferences && user.dbPreferences.includes("clay");
+    const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
+    const dbParsed = dbRaw ? (JSON.parse(dbRaw) as Record<string, unknown>) : {};
+    const hasApollo = !!(dbParsed.apollo as { apiKey?: string } | undefined)?.apiKey;
+    const hasClay = !!(dbParsed.clay as { apiKey?: string } | undefined)?.apiKey;
 
     return NextResponse.json({ hasLlm, hasApollo, hasClay });
   } catch (err) {

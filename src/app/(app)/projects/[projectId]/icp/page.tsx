@@ -118,6 +118,11 @@ function ChipGroup({ icon: Icon, label, items }: { icon: React.ElementType; labe
   );
 }
 
+const COLOR_BG: Record<string, string> = {
+  green: "bg-green-400", red: "bg-red-400", blue: "bg-blue-400",
+  yellow: "bg-yellow-400", violet: "bg-violet-400", purple: "bg-purple-400",
+};
+
 function BulletList({ title, items, color }: { title: string; items: string[]; color: string }) {
   return (
     <div>
@@ -125,7 +130,7 @@ function BulletList({ title, items, color }: { title: string; items: string[]; c
       <ul className="space-y-1.5">
         {items.map((item, i) => (
           <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-            <span className={`h-1 w-1 rounded-full bg-${color}-400 mt-1.5 shrink-0`} />
+            <span className={`h-1 w-1 rounded-full ${COLOR_BG[color] ?? "bg-slate-400"} mt-1.5 shrink-0`} />
             {item}
           </li>
         ))}
