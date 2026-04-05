@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (err) {
+    console.error("[AppLayout] getServerSession failed:", err);
+    throw new Error(`Auth error: ${(err as Error).message}`);
+  }
   if (!session) redirect("/sign-in");
 
   return (

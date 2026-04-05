@@ -17,10 +17,22 @@ export default async function ProjectLayout({
   ]);
   if (!session) redirect("/sign-in");
 
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, userId: session.user!.id! },
-    include: { steps: true },
-  });
+  const userId = session.user?.id;
+  if (!userId) {
+    console.error("[ProjectLayout] session.user.id is missing", { session });
+    redirect("/sign-in");
+  }
+
+  let project;
+  try {
+    project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      include: { steps: true },
+    });
+  } catch (err) {
+    console.error("[ProjectLayout] prisma.findFirst failed:", err);
+    throw new Error(`Database error loading project: ${(err as Error).message}`);
+  }
 
   if (!project) notFound();
 
