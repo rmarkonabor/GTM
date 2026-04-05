@@ -5,8 +5,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { inngest } from "@/../inngest/client";
 import { errorResponse } from "@/lib/errors/handlers";
-import { safeDecrypt } from "@/lib/crypto";
-import { LLMPreference, DBPreferences } from "@/types/gtm";
 
 export async function POST(
   _req: NextRequest,
@@ -54,24 +52,16 @@ export async function POST(
         return NextResponse.json({ success: true, next: "clarifying" });
       } else {
         // No questions — start workflow immediately
-        const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-        const llmRaw = safeDecrypt(user?.llmPreference ?? null);
-        if (!llmRaw) {
-          return NextResponse.json({ error: { code: "LLM_NOT_CONFIGURED", message: "Please configure your LLM in Settings." } }, { status: 400 });
-        }
-        const llmPreference = JSON.parse(llmRaw) as LLMPreference;
-        const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
-        const dbPreferences: DBPreferences = dbRaw ? JSON.parse(dbRaw) : {};
         await prisma.project.update({ where: { id: projectId }, data: { status: "IN_PROGRESS" } });
-        await inngest.send({ name: "gtm/workflow.start", data: { projectId, llmPreference, dbPreferences } });
+        await inngest.send({ name: "gtm/workflow.start", data: { projectId } });
         return NextResponse.json({ success: true, next: "workflow" });
       }
     }
 
-    // All other steps: send approval event to unblock Inngest workflow
+    // All other steps: trigger next step in workflow
     await inngest.send({
       name: "gtm/step.approved",
-      data: { projectId, stepName },
+      data: { projectId },
     });
 
     return NextResponse.json({ success: true, next: "workflow" });

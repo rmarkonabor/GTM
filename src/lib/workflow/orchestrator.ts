@@ -2,7 +2,8 @@ import { inngest } from "@/../inngest/client";
 import { prisma } from "@/lib/db/client";
 import { Prisma, StepName } from "@prisma/client";
 import { getErrorDetails } from "@/lib/errors/types";
-import { WorkflowContext } from "@/types/gtm";
+import { WorkflowContext, LLMPreference, DBPreferences } from "@/types/gtm";
+import { safeDecrypt } from "@/lib/crypto";
 import { runTargetMarkets } from "./steps/runTargetMarkets";
 import { runIndustryPriority } from "./steps/runIndustryPriority";
 import { runICP } from "./steps/runICP";
@@ -12,146 +13,176 @@ import { runCompetitive } from "./steps/runCompetitive";
 import { runPositioning } from "./steps/runPositioning";
 import { runManifesto } from "./steps/runManifesto";
 
+const STEP_ORDER: StepName[] = [
+  "TARGET_MARKETS",
+  "INDUSTRY_PRIORITY",
+  "ICP",
+  "SEGMENTATION",
+  "MARKET_SIZING",
+  "COMPETITIVE",
+  "POSITIONING",
+  "MANIFESTO",
+];
+
 export const gtmWorkflow = inngest.createFunction(
   {
     id: "gtm-workflow",
-    retries: 0,
-    triggers: [{ event: "gtm/workflow.start" }],
+    retries: 1,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    triggers: [{ event: "gtm/workflow.start" }, { event: "gtm/step.approved" }] as any,
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: any) => {
-    const { projectId, llmPreference, dbPreferences } = event.data as {
-      projectId: string;
-      llmPreference: { provider: string; apiKey: string };
-      dbPreferences: { apollo?: { apiKey: string }; clay?: { apiKey: string } };
-    };
+    const { projectId } = event.data as { projectId: string };
 
-    // Load project + any previously completed steps (for re-runs)
-    const { project, priorOutputs } = await step.run("load-project", async () => {
-      const p = await prisma.project.update({
+    // Load project, user LLM settings, and completed step outputs
+    const loaded = await step.run("load-context", async () => {
+      const p = await prisma.project.findUnique({
         where: { id: projectId },
-        data: { status: "IN_PROGRESS" },
         include: { steps: true },
       });
-      const outputs: Record<string, unknown> = {};
+      if (!p) throw new Error(`Project ${projectId} not found`);
+
+      const user = await prisma.user.findUnique({ where: { id: p.userId } });
+      const llmRaw = safeDecrypt(user?.llmPreference ?? null);
+      if (!llmRaw) throw new Error("LLM not configured — please set your API key in Settings.");
+      const llm = JSON.parse(llmRaw) as LLMPreference;
+      const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
+      const db: DBPreferences = dbRaw ? JSON.parse(dbRaw) : {};
+
+      const priorOutputs: Record<string, unknown> = {};
       for (const s of p.steps) {
         if (s.status === "COMPLETE" && s.output) {
-          outputs[s.stepName] = s.output;
+          priorOutputs[s.stepName] = s.output;
         }
       }
-      return { project: p, priorOutputs: outputs };
+
+      // Ensure project is IN_PROGRESS
+      if (p.status !== "IN_PROGRESS" && p.status !== "COMPLETE") {
+        await prisma.project.update({ where: { id: projectId }, data: { status: "IN_PROGRESS" } });
+      }
+
+      return {
+        websiteUrl: p.websiteUrl,
+        companyProfile: p.companyProfile,
+        clarifyingQs: p.clarifyingQs,
+        businessType: p.businessType,
+        projectStatus: p.status,
+        steps: p.steps.map((s) => ({ stepName: s.stepName, status: s.status })),
+        priorOutputs,
+        llm,
+        db,
+      };
     });
+
+    // Find the next step to run (first PENDING or not-yet-created step)
+    const nextStepName = STEP_ORDER.find((s) => {
+      const existing = loaded.steps.find(
+        (ps: { stepName: StepName; status: string }) => ps.stepName === s
+      );
+      return !existing || existing.status === "PENDING";
+    });
+
+    // All steps done — mark project complete
+    if (!nextStepName) {
+      await step.run("complete-project", async () => {
+        await prisma.project.update({ where: { id: projectId }, data: { status: "COMPLETE" } });
+      });
+      return { projectId, status: "COMPLETE" };
+    }
 
     const ctx: WorkflowContext = {
       projectId,
-      websiteUrl: project.websiteUrl,
-      companyProfile: project.companyProfile as unknown as WorkflowContext["companyProfile"],
-      clarifyingAnswers: (project.clarifyingQs as { answers?: Record<string, string> })?.answers ?? {},
-      businessType: project.businessType ?? "other",
+      websiteUrl: loaded.websiteUrl,
+      companyProfile: loaded.companyProfile as WorkflowContext["companyProfile"],
+      clarifyingAnswers:
+        (loaded.clarifyingQs as { answers?: Record<string, string> } | null)?.answers ?? {},
+      businessType: loaded.businessType ?? "other",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      steps: priorOutputs as any,
+      steps: loaded.priorOutputs as any,
     };
 
-    // Helper: save a version of step output
-    const saveVersion = async (stepName: StepName, output: unknown, prompt?: string) => {
-      const count = await prisma.projectStepVersion.count({ where: { projectId, stepName } });
-      await prisma.projectStepVersion.create({
-        data: {
-          id: `${projectId}-${stepName}-${count + 1}-${Date.now()}`,
+    const llmPreference = loaded.llm as LLMPreference;
+    const dbPreferences = loaded.db as DBPreferences;
+
+    // Run the next step: mark RUNNING → call LLM → save → mark AWAITING_APPROVAL
+    await step.run(`run-${nextStepName}`, async () => {
+      await prisma.projectStep.upsert({
+        where: { projectId_stepName: { projectId, stepName: nextStepName } },
+        update: {
+          status: "RUNNING",
+          startedAt: new Date(),
+          errorCode: null,
+          errorMsg: null,
+          draftOutput: Prisma.DbNull,
+        },
+        create: {
           projectId,
-          stepName,
-          versionNum: count + 1,
-          output: output as object,
-          prompt: prompt ?? null,
+          stepName: nextStepName,
+          status: "RUNNING",
+          startedAt: new Date(),
         },
       });
-    };
 
-    const runStep = async <T>(
-      stepName: StepName,
-      fn: (ctx: WorkflowContext) => Promise<T>
-    ): Promise<T> => {
-      // Check if already complete (for workflow re-runs starting from later step)
-      const alreadyDone = await step.run(`check-${stepName}`, async () => {
-        const s = await prisma.projectStep.findUnique({
-          where: { projectId_stepName: { projectId, stepName } },
-        });
-        return s?.status === "COMPLETE" ? s.output : null;
-      });
-      if (alreadyDone) return alreadyDone as T;
-
-      // Run the step
-      await step.run(`run-${stepName}`, async () => {
-        await prisma.projectStep.upsert({
-          where: { projectId_stepName: { projectId, stepName } },
-          update: { status: "RUNNING", startedAt: new Date(), errorCode: null, errorMsg: null, draftOutput: Prisma.DbNull },
-          create: { projectId, stepName, status: "RUNNING", startedAt: new Date() },
-        });
-        try {
-          const output = await fn(ctx);
-          // Save version
-          await saveVersion(stepName, output);
-          // Save as draft, await approval
-          await prisma.projectStep.update({
-            where: { projectId_stepName: { projectId, stepName } },
-            data: { status: "AWAITING_APPROVAL", draftOutput: output as object },
-          });
-        } catch (err) {
-          const { code, message } = getErrorDetails(err);
-          await prisma.projectStep.update({
-            where: { projectId_stepName: { projectId, stepName } },
-            data: { status: "ERROR", errorCode: code, errorMsg: message },
-          });
-          throw err;
+      try {
+        let output: unknown;
+        switch (nextStepName) {
+          case "TARGET_MARKETS":
+            output = await runTargetMarkets(ctx, llmPreference);
+            break;
+          case "INDUSTRY_PRIORITY":
+            output = await runIndustryPriority(ctx, llmPreference);
+            break;
+          case "ICP":
+            output = await runICP(ctx, llmPreference);
+            break;
+          case "SEGMENTATION":
+            output = await runSegmentation(ctx, llmPreference);
+            break;
+          case "MARKET_SIZING":
+            output = await runMarketSizing(ctx, llmPreference, dbPreferences);
+            break;
+          case "COMPETITIVE":
+            output = await runCompetitive(ctx, llmPreference);
+            break;
+          case "POSITIONING":
+            output = await runPositioning(ctx, llmPreference);
+            break;
+          case "MANIFESTO":
+            output = await runManifesto(ctx, llmPreference);
+            break;
+          default:
+            throw new Error(`Unknown step: ${nextStepName}`);
         }
-      });
 
-      // Wait for user approval
-      await step.waitForEvent(`wait-approval-${stepName}`, {
-        event: "gtm/step.approved",
-        timeout: "7d",
-        if: `event.data.projectId == "${projectId}" && event.data.stepName == "${stepName}"`,
-      });
-
-      // Load the approved output from DB (approve API already set output + COMPLETE)
-      const approvedOutput = await step.run(`load-approved-${stepName}`, async () => {
-        const s = await prisma.projectStep.findUnique({
-          where: { projectId_stepName: { projectId, stepName } },
+        // Save a version snapshot
+        const count = await prisma.projectStepVersion.count({
+          where: { projectId, stepName: nextStepName },
         });
-        return s?.output as T;
-      });
+        await prisma.projectStepVersion.create({
+          data: {
+            id: `${projectId}-${nextStepName}-${count + 1}-${Date.now()}`,
+            projectId,
+            stepName: nextStepName,
+            versionNum: count + 1,
+            output: output as object,
+          },
+        });
 
-      return approvedOutput;
-    };
-
-    const targetMarkets = await runStep("TARGET_MARKETS", (c) => runTargetMarkets(c, llmPreference));
-    ctx.steps.TARGET_MARKETS = targetMarkets;
-
-    const industryPriority = await runStep("INDUSTRY_PRIORITY", (c) => runIndustryPriority(c, llmPreference));
-    ctx.steps.INDUSTRY_PRIORITY = industryPriority;
-
-    const icp = await runStep("ICP", (c) => runICP(c, llmPreference));
-    ctx.steps.ICP = icp;
-
-    const segmentation = await runStep("SEGMENTATION", (c) => runSegmentation(c, llmPreference));
-    ctx.steps.SEGMENTATION = segmentation;
-
-    const marketSizing = await runStep("MARKET_SIZING", (c) => runMarketSizing(c, llmPreference, dbPreferences));
-    ctx.steps.MARKET_SIZING = marketSizing;
-
-    const competitive = await runStep("COMPETITIVE", (c) => runCompetitive(c, llmPreference));
-    ctx.steps.COMPETITIVE = competitive;
-
-    const positioning = await runStep("POSITIONING", (c) => runPositioning(c, llmPreference));
-    ctx.steps.POSITIONING = positioning;
-
-    const manifesto = await runStep("MANIFESTO", (c) => runManifesto(c, llmPreference));
-    ctx.steps.MANIFESTO = manifesto;
-
-    await step.run("complete-project", async () => {
-      await prisma.project.update({ where: { id: projectId }, data: { status: "COMPLETE" } });
+        await prisma.projectStep.update({
+          where: { projectId_stepName: { projectId, stepName: nextStepName } },
+          data: { status: "AWAITING_APPROVAL", draftOutput: output as object },
+        });
+      } catch (err) {
+        const { code, message } = getErrorDetails(err);
+        await prisma.projectStep.update({
+          where: { projectId_stepName: { projectId, stepName: nextStepName } },
+          data: { status: "ERROR", errorCode: code, errorMsg: message },
+        });
+        throw err;
+      }
     });
 
-    return { projectId, status: "COMPLETE" };
+    return { projectId, step: nextStepName, status: "AWAITING_APPROVAL" };
   }
 );

@@ -1,11 +1,10 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { inngest } from "@/../inngest/client";
 import { errorResponse } from "@/lib/errors/handlers";
-import { safeDecrypt } from "@/lib/crypto";
-import { LLMPreference, DBPreferences } from "@/types/gtm";
 import { z } from "zod";
 
 const schema = z.object({ projectId: z.string() });
@@ -20,31 +19,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { projectId } = schema.parse(body);
 
-    const [project, user] = await Promise.all([
-      prisma.project.findFirst({ where: { id: projectId, userId: session.user.id } }),
-      prisma.user.findUnique({ where: { id: session.user.id } }),
-    ]);
-
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: session.user.id },
+    });
     if (!project) {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
 
-    const llmRaw = safeDecrypt(user?.llmPreference ?? null);
-    if (!llmRaw) {
-      return NextResponse.json(
-        { error: { code: "LLM_NOT_CONFIGURED", message: "Please configure your LLM provider in Settings." } },
-        { status: 400 }
-      );
-    }
-
-    const llmPreference = JSON.parse(llmRaw) as LLMPreference;
-    const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
-    const dbPreferences: DBPreferences = dbRaw ? JSON.parse(dbRaw) : {};
-
-    await inngest.send({
-      name: "gtm/workflow.start",
-      data: { projectId, llmPreference, dbPreferences },
-    });
+    await prisma.project.update({ where: { id: projectId }, data: { status: "IN_PROGRESS" } });
+    await inngest.send({ name: "gtm/workflow.start", data: { projectId } });
 
     return NextResponse.json({ success: true, message: "Workflow started." });
   } catch (err) {
