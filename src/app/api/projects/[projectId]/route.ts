@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { errorResponse } from "@/lib/errors/handlers";
 
+export const dynamic = "force-dynamic";
+
 async function getProject(projectId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
