@@ -23,7 +23,7 @@ export async function runSegmentation(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<SegmentationOutput> {
-  const context = buildStepContext(ctx);
+  const context = buildStepContext(ctx, ["ICP"]);
   let prompt = buildSegmentationPrompt(context);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;

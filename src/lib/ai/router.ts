@@ -20,10 +20,10 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "research-enrichment": "COMPLEX",
   "clarifying-questions": "MEDIUM",
   "target-markets": "COMPLEX",
-  "industry-priority": "COMPLEX",
-  "icp-creation": "COMPLEX",
+  "industry-priority": "MEDIUM",
+  "icp-creation": "MEDIUM",
   "segmentation": "MEDIUM",
-  "market-sizing-analysis": "COMPLEX",
+  "market-sizing-analysis": "MEDIUM",
   "competitive-analysis": "COMPLEX",
   "positioning": "COMPLEX",
   "manifesto": "COMPLEX",
@@ -41,7 +41,7 @@ const MODEL_TIER: Record<LLMProvider, Record<TaskComplexity, string>> = {
   },
   anthropic: {
     COMPLEX: "claude-sonnet-4-6",
-    MEDIUM: "claude-sonnet-4-6",
+    MEDIUM: "claude-haiku-4-5-20251001",
     SIMPLE: "claude-haiku-4-5-20251001",
   },
   google: {

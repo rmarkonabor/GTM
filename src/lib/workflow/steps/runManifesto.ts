@@ -25,7 +25,7 @@ export async function runManifesto(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<ManifestoOutput> {
-  const context = buildStepContext(ctx);
+  const context = buildStepContext(ctx, ["POSITIONING"]);
   let prompt = buildManifestoPrompt(context);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;

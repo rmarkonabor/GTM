@@ -23,7 +23,7 @@ export async function runIndustryPriority(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<IndustryPriorityOutput[]> {
-  const context = buildStepContext(ctx);
+  const context = buildStepContext(ctx, ["TARGET_MARKETS"]);
   const markets = ctx.steps.TARGET_MARKETS?.markets ?? [];
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "industry-priority");
 

@@ -37,7 +37,7 @@ export async function runICP(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<ICPOutput> {
-  const context = buildStepContext(ctx);
+  const context = buildStepContext(ctx, ["TARGET_MARKETS", "INDUSTRY_PRIORITY"]);
   const industries = ctx.steps.INDUSTRY_PRIORITY?.flatMap((ip) => ip.industries) ?? [];
   let prompt = buildICPPrompt(context, industries);
   if (ctx.editPrompt) {
