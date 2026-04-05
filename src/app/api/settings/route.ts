@@ -34,7 +34,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (databases) {
-      updates.dbPreferences = encrypt(JSON.stringify(databases));
+      // Merge with existing db prefs so saving Apollo doesn't wipe Clay and vice versa
+      const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+      const existing = safeDecrypt(user?.dbPreferences ?? null);
+      const existingParsed = existing ? JSON.parse(existing) : {};
+      const merged = { ...existingParsed, ...databases };
+      updates.dbPreferences = encrypt(JSON.stringify(merged));
     }
 
     await prisma.user.update({
@@ -57,14 +62,17 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
 
-    // Return whether keys exist (never return the actual keys to client)
-    const hasLlm = !!user?.llmPreference;
-    const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
-    const dbParsed = dbRaw ? (JSON.parse(dbRaw) as Record<string, unknown>) : {};
-    const hasApollo = !!(dbParsed.apollo as { apiKey?: string } | undefined)?.apiKey;
-    const hasClay = !!(dbParsed.clay as { apiKey?: string } | undefined)?.apiKey;
+    const llmRaw = safeDecrypt(user?.llmPreference ?? null);
+    const llmParsed = llmRaw ? (JSON.parse(llmRaw) as { provider: string; apiKey: string }) : null;
 
-    return NextResponse.json({ hasLlm, hasApollo, hasClay });
+    const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
+    const dbParsed = dbRaw ? (JSON.parse(dbRaw) as { apollo?: { apiKey: string }; clay?: { apiKey: string } }) : {};
+
+    return NextResponse.json({
+      llm: llmParsed ? { provider: llmParsed.provider, apiKey: llmParsed.apiKey } : null,
+      apollo: dbParsed.apollo?.apiKey ?? null,
+      clay: dbParsed.clay?.apiKey ?? null,
+    });
   } catch (err) {
     return errorResponse(err);
   }
