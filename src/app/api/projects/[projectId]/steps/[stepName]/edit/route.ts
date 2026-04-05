@@ -65,12 +65,18 @@ export async function POST(
     const stepFn = STEP_FN[stepName];
     if (!stepFn) return NextResponse.json({ error: { code: "INVALID_STEP", message: "Unknown step." } }, { status: 400 });
 
+    // Read existing step so we can restore its state if the LLM call fails
+    const existingStep = await prisma.projectStep.findUnique({
+      where: { projectId_stepName: { projectId, stepName: stepName as never } },
+    });
+    if (!existingStep) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Step not found or has not run yet." } }, { status: 404 });
+
     // Build context from DB
     const ctx = await buildContextFromDB(projectId);
     if (!ctx) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project context not found." } }, { status: 404 });
     ctx.editPrompt = prompt;
 
-    // Mark step as running, clearing any stale error/draft state from prior runs
+    // Mark step as running, clearing any stale error/draft state
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
       data: { status: "RUNNING", startedAt: new Date(), errorCode: null, errorMsg: null, draftOutput: Prisma.DbNull },
@@ -80,10 +86,17 @@ export async function POST(
     try {
       output = await stepFn(ctx, llmPreference, dbPreferences);
     } catch (err) {
+      // Restore original step state so the UI doesn't end up broken (e.g. COMPLETE step
+      // with no draftOutput showing as "pending" after a failed edit).
       await prisma.projectStep.update({
         where: { projectId_stepName: { projectId, stepName: stepName as never } },
-        data: { status: "AWAITING_APPROVAL" },
-      });
+        data: {
+          status: existingStep.status,
+          draftOutput: existingStep.draftOutput ?? Prisma.DbNull,
+          errorCode: null,
+          errorMsg: null,
+        },
+      }).catch(() => {}); // best-effort; don't mask the original error
       throw err;
     }
 
