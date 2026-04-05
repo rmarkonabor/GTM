@@ -14,12 +14,12 @@ import { runPositioning } from "./steps/runPositioning";
 import { runManifesto } from "./steps/runManifesto";
 
 const STEP_ORDER: StepName[] = [
-  "TARGET_MARKETS",
   "INDUSTRY_PRIORITY",
+  "TARGET_MARKETS",
   "ICP",
+  "COMPETITIVE",
   "SEGMENTATION",
   "MARKET_SIZING",
-  "COMPETITIVE",
   "POSITIONING",
   "MANIFESTO",
 ];

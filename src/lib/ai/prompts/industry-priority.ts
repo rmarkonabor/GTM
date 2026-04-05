@@ -1,33 +1,37 @@
-export function buildIndustryPriorityPrompt(context: string, market: object): string {
-  return `You are a senior GTM strategist. For the target market below, identify the top industries to prioritize and define each one in detail.
+export function buildIndustryPriorityPrompt(context: string): string {
+  return `You are a senior GTM strategist. Based on the company profile and clarifying answers below, identify and rank the industries this company should prioritize targeting.
 
 ${context}
 
-Target Market:
-${JSON.stringify(market, null, 2)}
+This is the FIRST strategic step — before identifying specific target markets. You are answering: which vertical industries are the best fit for this company's product or service?
 
-For each industry, define:
-1. Pain points specific to this industry
-2. Exactly what the client can offer to solve those pain points
-3. How the client and potential buyers can work together (engagement model)
+For each industry:
+1. Why is this industry a strong fit for this company? (be specific to what they actually offer)
+2. What urgent pain points exist in this industry that the company directly addresses?
+3. What does the company specifically offer to solve those pain points?
+4. How would the company and buyers in this industry work together? (engagement model, sales motion)
+5. What is your honest assessment of estimated market fit?
 
 Return JSON:
 {
-  "targetMarketId": "market_id",
   "industries": [
     {
-      "industryName": "Industry Name",
+      "industryName": "Industry Name (e.g. FinTech, Healthcare IT, E-commerce Brands)",
       "priorityRank": 1,
-      "painPoints": ["pain point 1", "pain point 2"],
-      "whatClientOffers": ["specific offering 1", "specific offering 2"],
-      "howTheyWorkTogether": "description of the working relationship and engagement model",
-      "estimatedMarketFit": "high" | "medium" | "low"
+      "painPoints": ["specific pain point 1", "specific pain point 2"],
+      "whatClientOffers": ["specific offering mapped to this industry's pain", "another specific offering"],
+      "howTheyWorkTogether": "description of the engagement model and how sales/delivery works with buyers in this industry",
+      "estimatedMarketFit": "high"
     }
   ]
 }
 
 Rules:
-- 3-7 industries per market, ranked by priority
-- Be specific — generic answers like "they need better tools" are not acceptable
+- Identify 5-8 industries, ranked by fit (rank 1 = best fit)
+- Base industries on the company's ACTUAL product and differentiation, not generic advice
+- "high" fit: company has a clear, differentiated solution for a real urgent problem in this industry
+- "medium" fit: company can serve this industry but faces more competition or lower urgency
+- "low" fit: possible but not the best use of GTM resources right now
+- Be SPECIFIC — "they need better data tools" is not acceptable; name the exact pain
 - Return ONLY JSON, no markdown.`;
 }

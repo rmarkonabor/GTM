@@ -38,7 +38,7 @@ export async function runICP(
   llm: { provider: string; apiKey: string }
 ): Promise<ICPOutput> {
   const context = buildStepContext(ctx, ["TARGET_MARKETS", "INDUSTRY_PRIORITY"]);
-  const industries = ctx.steps.INDUSTRY_PRIORITY?.flatMap((ip) => ip.industries) ?? [];
+  const industries = ctx.steps.INDUSTRY_PRIORITY?.industries ?? [];
   let prompt = buildICPPrompt(context, industries);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;

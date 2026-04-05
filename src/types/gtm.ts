@@ -69,7 +69,6 @@ export interface IndustryDefinition {
 }
 
 export interface IndustryPriorityOutput {
-  targetMarketId: string;
   industries: IndustryDefinition[];
 }
 
@@ -199,7 +198,7 @@ export interface ManifestoOutput {
 export type StepOutputMap = {
   RESEARCH: ResearchOutput;
   TARGET_MARKETS: TargetMarketsOutput;
-  INDUSTRY_PRIORITY: IndustryPriorityOutput[];
+  INDUSTRY_PRIORITY: IndustryPriorityOutput;
   ICP: ICPOutput;
   SEGMENTATION: SegmentationOutput;
   MARKET_SIZING: MarketSizingOutput;
