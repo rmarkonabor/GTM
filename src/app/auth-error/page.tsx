@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Target, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,31 +35,39 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   },
 };
 
-export default function AuthErrorPage() {
+function ErrorContent() {
   const params = useSearchParams();
   const error = params.get("error") ?? "Default";
   const info = ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default;
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md text-center">
-        <div className="flex justify-center mb-4">
-          <div className="relative">
-            <Target className="h-10 w-10 text-violet-400" />
-            <AlertCircle className="h-5 w-5 text-red-400 absolute -bottom-1 -right-1" />
-          </div>
+    <div className="w-full max-w-md text-center">
+      <div className="flex justify-center mb-4">
+        <div className="relative">
+          <Target className="h-10 w-10 text-violet-400" />
+          <AlertCircle className="h-5 w-5 text-red-400 absolute -bottom-1 -right-1" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">{info.title}</h1>
-        <p className="text-slate-400 mb-6 text-sm leading-relaxed">{info.description}</p>
-        {error !== "Default" && (
-          <p className="text-xs text-slate-600 mb-6 font-mono">Error code: {error}</p>
-        )}
-        <Link href="/sign-in">
-          <Button className="bg-violet-600 hover:bg-violet-700 text-white">
-            Back to sign in
-          </Button>
-        </Link>
       </div>
+      <h1 className="text-2xl font-bold text-white mb-2">{info.title}</h1>
+      <p className="text-slate-400 mb-6 text-sm leading-relaxed">{info.description}</p>
+      {error !== "Default" && (
+        <p className="text-xs text-slate-600 mb-6 font-mono">Error code: {error}</p>
+      )}
+      <Link href="/sign-in">
+        <Button className="bg-violet-600 hover:bg-violet-700 text-white">
+          Back to sign in
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <Suspense fallback={<div className="text-slate-400">Loading...</div>}>
+        <ErrorContent />
+      </Suspense>
     </div>
   );
 }
