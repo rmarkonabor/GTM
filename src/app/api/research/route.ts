@@ -96,7 +96,6 @@ export async function POST(req: NextRequest) {
       data: {
         status: "AWAITING_APPROVAL",
         draftOutput: { companyProfile, questionsNeeded } as object,
-        completedAt: new Date(),
       },
     });
 

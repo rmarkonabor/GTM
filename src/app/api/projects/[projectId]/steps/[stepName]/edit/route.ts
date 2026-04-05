@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
+import { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/errors/handlers";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference, DBPreferences } from "@/types/gtm";
@@ -69,10 +70,10 @@ export async function POST(
     if (!ctx) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project context not found." } }, { status: 404 });
     ctx.editPrompt = prompt;
 
-    // Mark step as running
+    // Mark step as running, clearing any stale error/draft state from prior runs
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
-      data: { status: "RUNNING", startedAt: new Date() },
+      data: { status: "RUNNING", startedAt: new Date(), errorCode: null, errorMsg: null, draftOutput: Prisma.DbNull },
     });
 
     let output: unknown;
@@ -99,10 +100,10 @@ export async function POST(
       },
     });
 
-    // Update draftOutput, keep AWAITING_APPROVAL
+    // Update draftOutput, keep AWAITING_APPROVAL; clear any prior error fields
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
-      data: { status: "AWAITING_APPROVAL", draftOutput: output as object },
+      data: { status: "AWAITING_APPROVAL", draftOutput: output as object, errorCode: null, errorMsg: null },
     });
 
     return NextResponse.json({ success: true, output });
