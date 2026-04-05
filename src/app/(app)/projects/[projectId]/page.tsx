@@ -54,23 +54,31 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
   const runResearch = useCallback(async () => {
     setPhase("researching");
-    const res = await fetch("/api/research", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setErrorMsg(data.error?.message ?? "Research failed. Please try again.");
+    try {
+      const res = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
+      if (!res.ok) {
+        setErrorMsg((data.error as { message?: string })?.message ?? `Research failed (${res.status}). Please try again.`);
+        setPhase("error");
+        return;
+      }
+      if (data.needsClarification) {
+        const proj = await fetchProject();
+        if (proj) setProject(proj);
+        setPhase("clarifying");
+      } else {
+        await startWorkflow();
+      }
+    } catch (err) {
+      setErrorMsg((err as Error).message ?? "Research failed. Please try again.");
       setPhase("error");
-      return;
     }
-    if (data.needsClarification) {
-      setPhase("clarifying");
-    } else {
-      await startWorkflow();
-    }
-  }, [projectId]);
+  }, [projectId, fetchProject]);
 
   const startWorkflow = useCallback(async () => {
     setPhase("starting");
