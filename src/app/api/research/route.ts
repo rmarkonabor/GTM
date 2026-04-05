@@ -13,7 +13,11 @@ import { z } from "zod";
 
 const schema = z.object({ projectId: z.string() });
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
+  let projectId: string | null = null;
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -21,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { projectId } = schema.parse(body);
+    ({ projectId } = schema.parse(body));
 
     const [project, user] = await Promise.all([
       prisma.project.findFirst({ where: { id: projectId, userId: session.user.id } }),
@@ -32,7 +36,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
 
-    // Get user's LLM preference
     const llmRaw = safeDecrypt(user?.llmPreference ?? null);
     if (!llmRaw) {
       return NextResponse.json(
@@ -57,45 +60,42 @@ export async function POST(req: NextRequest) {
     const prompt = buildResearchPrompt(project.websiteUrl, scrapedContent);
     const { text } = await generateText({ model, prompt, maxOutputTokens: 2000 });
 
-    let parsed;
-    try {
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in response");
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error("SCRAPING_PARSE_ERROR: Could not parse research output. Please try again.");
-    }
-
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON in LLM response");
+    const parsed = JSON.parse(jsonMatch[0]);
     const { companyProfile, questionsNeeded } = parsed;
 
-    // Save company profile to project
     await prisma.project.update({
       where: { id: projectId },
       data: {
         companyProfile,
         businessType: companyProfile.businessType,
-        clarifyingQs: { questions: questionsNeeded, answers: {} },
+        clarifyingQs: { questions: questionsNeeded ?? [], answers: {} },
         status: questionsNeeded?.length > 0 ? "CLARIFYING" : "IN_PROGRESS",
       },
     });
 
-    // Mark research step complete
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: "RESEARCH" } },
-      data: {
-        status: "COMPLETE",
-        output: { companyProfile, questionsNeeded },
-        completedAt: new Date(),
-      },
+      data: { status: "COMPLETE", output: { companyProfile, questionsNeeded }, completedAt: new Date() },
     });
 
     return NextResponse.json({
       companyProfile,
-      questionsNeeded,
-      needsClarification: questionsNeeded?.length > 0,
+      questionsNeeded: questionsNeeded ?? [],
+      needsClarification: (questionsNeeded?.length ?? 0) > 0,
     });
   } catch (err) {
+    // Mark step as ERROR so the UI doesn't stay stuck on "Running"
+    if (projectId) {
+      await prisma.projectStep.upsert({
+        where: { projectId_stepName: { projectId, stepName: "RESEARCH" } },
+        update: { status: "ERROR", errorCode: "RESEARCH_FAILED", errorMsg: err instanceof Error ? err.message : "Unknown error" },
+        create: { projectId, stepName: "RESEARCH", status: "ERROR", errorCode: "RESEARCH_FAILED", errorMsg: err instanceof Error ? err.message : "Unknown error" },
+      }).catch(() => {});
+      await prisma.project.update({ where: { id: projectId }, data: { status: "ERROR" } }).catch(() => {});
+    }
     return errorResponse(err);
   }
 }

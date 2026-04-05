@@ -40,8 +40,8 @@ const MODEL_TIER: Record<LLMProvider, Record<TaskComplexity, string>> = {
     SIMPLE: "gpt-4o-mini",
   },
   anthropic: {
-    COMPLEX: "claude-opus-4-6-20251101",
-    MEDIUM: "claude-sonnet-4-6-20251101",
+    COMPLEX: "claude-sonnet-4-6",
+    MEDIUM: "claude-sonnet-4-6",
     SIMPLE: "claude-haiku-4-5-20251001",
   },
   google: {
