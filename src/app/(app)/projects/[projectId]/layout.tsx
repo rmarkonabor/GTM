@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db/client";
 import { redirect, notFound } from "next/navigation";
 import { ProjectStepNav } from "@/components/layout/ProjectStepNav";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProjectLayout({
   children,
   params,

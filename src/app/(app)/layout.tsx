@@ -3,14 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  let session;
-  try {
-    session = await getServerSession(authOptions);
-  } catch (err) {
-    console.error("[AppLayout] getServerSession failed:", err);
-    throw new Error(`Auth error: ${(err as Error).message}`);
-  }
+  const session = await getServerSession(authOptions);
   if (!session) redirect("/sign-in");
 
   return (
