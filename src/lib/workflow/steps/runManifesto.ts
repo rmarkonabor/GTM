@@ -18,7 +18,7 @@ const schema = z.object({
       headline: z.string(),
       supportingPoints: z.array(z.string()),
     })
-  ).min(3).max(4),
+  ),
 });
 
 export async function runManifesto(

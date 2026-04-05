@@ -16,7 +16,7 @@ const schema = z.object({
       whyRightMarket: z.string(),
       priorityScore: z.number(),
     })
-  ).max(5),
+  ),
 });
 
 export async function runTargetMarkets(
