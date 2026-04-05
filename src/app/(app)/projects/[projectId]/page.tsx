@@ -1,7 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db/client";
-import { redirect, notFound } from "next/navigation";
+"use client";
+
+import { use, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Loader2, ArrowRight, AlertCircle, Globe } from "lucide-react";
 
 const STEP_PATHS: Record<string, string> = {
   RESEARCH: "research",
@@ -15,32 +20,221 @@ const STEP_PATHS: Record<string, string> = {
   MANIFESTO: "manifesto",
 };
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const [session, { projectId }] = await Promise.all([
-    getServerSession(authOptions),
-    params,
-  ]);
-  if (!session) redirect("/sign-in");
+interface ClarifyingQuestion {
+  id: string;
+  question: string;
+  purpose: string;
+  optional: boolean;
+}
 
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, userId: session.user!.id! },
-    include: { steps: { orderBy: { updatedAt: "asc" } } },
-  });
+interface Project {
+  id: string;
+  websiteUrl: string;
+  status: string;
+  clarifyingQs: { questions: ClarifyingQuestion[]; answers: Record<string, string> } | null;
+  steps: { stepName: string; status: string }[];
+}
 
-  if (!project) notFound();
+export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
+  const router = useRouter();
 
-  // Redirect to the most recently active/errored step, or research
-  const activeStep = project.steps.find((s) => s.status === "RUNNING" || s.status === "ERROR");
-  const firstComplete = project.steps.find((s) => s.status === "COMPLETE");
-  const targetStep = activeStep ?? firstComplete;
+  const [project, setProject] = useState<Project | null>(null);
+  const [phase, setPhase] = useState<"loading" | "researching" | "clarifying" | "starting" | "error">("loading");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  if (targetStep) {
-    redirect(`/projects/${projectId}/${STEP_PATHS[targetStep.stepName]}`);
+  const fetchProject = useCallback(async () => {
+    const res = await fetch(`/api/projects/${projectId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.project as Project;
+  }, [projectId]);
+
+  const runResearch = useCallback(async () => {
+    setPhase("researching");
+    const res = await fetch("/api/research", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setErrorMsg(data.error?.message ?? "Research failed. Please try again.");
+      setPhase("error");
+      return;
+    }
+    if (data.needsClarification) {
+      setPhase("clarifying");
+    } else {
+      await startWorkflow();
+    }
+  }, [projectId]);
+
+  const startWorkflow = useCallback(async () => {
+    setPhase("starting");
+    const res = await fetch("/api/workflow", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setErrorMsg(data.error?.message ?? "Failed to start workflow.");
+      setPhase("error");
+      return;
+    }
+    router.push(`/projects/${projectId}/research`);
+  }, [projectId, router]);
+
+  // On mount: fetch project and decide what to do
+  useEffect(() => {
+    fetchProject().then((p) => {
+      if (!p) { setErrorMsg("Project not found."); setPhase("error"); return; }
+      setProject(p);
+
+      const activeStep = p.steps.find((s) => s.status === "RUNNING" || s.status === "ERROR");
+      const firstComplete = p.steps.find((s) => s.status === "COMPLETE");
+      const target = activeStep ?? firstComplete;
+
+      if (target) {
+        router.replace(`/projects/${projectId}/${STEP_PATHS[target.stepName]}`);
+        return;
+      }
+
+      if (p.status === "IN_PROGRESS" || p.status === "COMPLETE") {
+        router.replace(`/projects/${projectId}/research`);
+        return;
+      }
+
+      if (p.status === "CLARIFYING" && p.clarifyingQs?.questions?.length) {
+        // Resume clarifying — pre-fill existing answers
+        setAnswers(p.clarifyingQs.answers ?? {});
+        setPhase("clarifying");
+        return;
+      }
+
+      if (p.status === "ERROR") {
+        setErrorMsg("Research failed. Please try again.");
+        setPhase("error");
+        return;
+      }
+
+      // RESEARCHING or fresh — start/resume research
+      runResearch();
+    });
+  }, [fetchProject, projectId, router, runResearch]);
+
+  const handleAnswersSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/clarifying", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, answers }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error?.message ?? "Failed to save answers");
+      }
+      await startWorkflow();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (phase === "loading" || phase === "researching" || phase === "starting") {
+    const label =
+      phase === "researching" ? "Analyzing your website…" :
+      phase === "starting" ? "Starting GTM analysis…" :
+      "Loading project…";
+
+    return (
+      <div className="p-8 max-w-xl">
+        <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 mb-4">
+          <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+          <span className="text-sm">{label}</span>
+        </div>
+        {project && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+            <div className="flex items-center gap-2 text-slate-500 text-sm">
+              <Globe className="h-4 w-4" />
+              {project.websiteUrl}
+            </div>
+          </div>
+        )}
+        {phase === "researching" && (
+          <p className="text-xs text-slate-400 mt-4">
+            Scraping website and running AI analysis. This takes 15–30 seconds.
+            <br />You can close this tab — the project is saved and will be here when you return.
+          </p>
+        )}
+      </div>
+    );
   }
 
-  redirect(`/projects/${projectId}/research`);
+  if (phase === "error") {
+    return (
+      <div className="p-8 max-w-xl">
+        <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-5">
+          <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium text-red-700 dark:text-red-300">Something went wrong</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errorMsg}</p>
+          </div>
+        </div>
+        <Button
+          onClick={() => { setPhase("researching"); runResearch(); }}
+          className="mt-4 bg-violet-600 hover:bg-violet-700 text-white gap-2"
+        >
+          <ArrowRight className="h-4 w-4" /> Retry Research
+        </Button>
+      </div>
+    );
+  }
+
+  // phase === "clarifying"
+  const questions = project?.clarifyingQs?.questions ?? [];
+  return (
+    <div className="p-8 max-w-2xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">A few quick questions</h1>
+        <p className="text-slate-500 text-sm">
+          Help the AI tailor your GTM strategy. Optional questions can be skipped.
+        </p>
+      </div>
+
+      <form onSubmit={handleAnswersSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6 space-y-5">
+        {questions.map((q) => (
+          <div key={q.id}>
+            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {q.question}
+              {q.optional && <span className="ml-1.5 text-slate-400 font-normal">(optional)</span>}
+            </Label>
+            <p className="text-xs text-slate-400 mt-0.5 mb-1.5">{q.purpose}</p>
+            <Textarea
+              placeholder="Your answer…"
+              value={answers[q.id] ?? ""}
+              onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+              className="dark:bg-slate-800 dark:border-white/20 dark:text-white resize-none"
+              rows={2}
+            />
+          </div>
+        ))}
+
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+          {submitting ? "Building strategy…" : "Build My GTM Strategy"}
+        </Button>
+      </form>
+    </div>
+  );
 }
