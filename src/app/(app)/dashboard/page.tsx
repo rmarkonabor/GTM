@@ -50,6 +50,9 @@ export default function DashboardPage() {
     const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
     if (res.ok) {
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error?.message ?? "Failed to delete project. Please try again.");
     }
   };
 

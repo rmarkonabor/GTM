@@ -46,6 +46,8 @@ export async function DELETE(
     if (!project) {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
+    // Explicitly delete versions first (table was created without DB FK constraint)
+    await prisma.$executeRawUnsafe(`DELETE FROM "ProjectStepVersion" WHERE "projectId" = $1`, projectId);
     await prisma.project.delete({ where: { id: projectId } });
     return NextResponse.json({ success: true });
   } catch (err) {
