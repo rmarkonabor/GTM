@@ -15,6 +15,7 @@ import { runMarketSizing } from "@/lib/workflow/steps/runMarketSizing";
 import { runCompetitive } from "@/lib/workflow/steps/runCompetitive";
 import { runPositioning } from "@/lib/workflow/steps/runPositioning";
 import { runManifesto } from "@/lib/workflow/steps/runManifesto";
+import { runResearchEdit } from "@/lib/workflow/steps/runResearchEdit";
 import { z } from "zod";
 
 export const maxDuration = 120;
@@ -23,6 +24,7 @@ const schema = z.object({ prompt: z.string().min(1) });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = {
+  RESEARCH: runResearchEdit,
   TARGET_MARKETS: runTargetMarkets,
   INDUSTRY_PRIORITY: runIndustryPriority,
   ICP: runICP,

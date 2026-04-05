@@ -72,13 +72,32 @@ export async function POST(req: NextRequest) {
         companyProfile,
         businessType: companyProfile.businessType,
         clarifyingQs: { questions: questionsNeeded ?? [], answers: {} },
-        status: questionsNeeded?.length > 0 ? "CLARIFYING" : "IN_PROGRESS",
+        status: "RESEARCHING", // stays RESEARCHING until user approves research step
       },
     });
 
+    // Save version
+    const versionCount = await prisma.projectStepVersion.count({
+      where: { projectId, stepName: "RESEARCH" },
+    });
+    await prisma.projectStepVersion.create({
+      data: {
+        id: `${projectId}-RESEARCH-${versionCount + 1}-${Date.now()}`,
+        projectId,
+        stepName: "RESEARCH",
+        versionNum: versionCount + 1,
+        output: { companyProfile, questionsNeeded } as object,
+      },
+    });
+
+    // Save as draft, await approval (same pattern as workflow steps)
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: "RESEARCH" } },
-      data: { status: "COMPLETE", output: { companyProfile, questionsNeeded }, completedAt: new Date() },
+      data: {
+        status: "AWAITING_APPROVAL",
+        draftOutput: { companyProfile, questionsNeeded } as object,
+        completedAt: new Date(),
+      },
     });
 
     return NextResponse.json({

@@ -67,13 +67,8 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         setPhase("error");
         return;
       }
-      if (data.needsClarification) {
-        const proj = await fetchProject();
-        if (proj) setProject(proj);
-        setPhase("clarifying");
-      } else {
-        await startWorkflow();
-      }
+      // Research is now AWAITING_APPROVAL — send user to review it
+      router.push(`/projects/${projectId}/research`);
     } catch (err) {
       setErrorMsg((err as Error).message ?? "Research failed. Please try again.");
       setPhase("error");
@@ -102,24 +97,26 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
       if (!p) { setErrorMsg("Project not found."); setPhase("error"); return; }
       setProject(p);
 
-      const activeStep = p.steps.find((s) => s.status === "RUNNING" || s.status === "ERROR");
-      const firstComplete = p.steps.find((s) => s.status === "COMPLETE");
-      const target = activeStep ?? firstComplete;
-
-      if (target) {
-        router.replace(`/projects/${projectId}/${STEP_PATHS[target.stepName]}`);
+      // Highest priority: any step awaiting approval or actively running
+      const priorityStep = p.steps.find((s) =>
+        s.status === "AWAITING_APPROVAL" || s.status === "RUNNING" || s.status === "ERROR"
+      );
+      if (priorityStep) {
+        router.replace(`/projects/${projectId}/${STEP_PATHS[priorityStep.stepName]}`);
         return;
       }
 
-      if (p.status === "IN_PROGRESS" || p.status === "COMPLETE") {
-        router.replace(`/projects/${projectId}/research`);
-        return;
-      }
-
+      // If clarifying questions need answering
       if (p.status === "CLARIFYING" && p.clarifyingQs?.questions?.length) {
-        // Resume clarifying — pre-fill existing answers
         setAnswers(p.clarifyingQs.answers ?? {});
         setPhase("clarifying");
+        return;
+      }
+
+      // If workflow is in progress or complete, go to most recent completed step
+      if (p.status === "IN_PROGRESS" || p.status === "COMPLETE") {
+        const lastComplete = [...p.steps].reverse().find((s) => s.status === "COMPLETE");
+        router.replace(`/projects/${projectId}/${STEP_PATHS[lastComplete?.stepName ?? "RESEARCH"]}`);
         return;
       }
 
