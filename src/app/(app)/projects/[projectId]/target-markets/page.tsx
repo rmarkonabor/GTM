@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { TrendingUp, AlertTriangle, Info } from "lucide-react";
 
@@ -11,8 +13,8 @@ interface TargetMarket {
   priorityScore: number;
 }
 
-export default async function TargetMarketsPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function TargetMarketsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

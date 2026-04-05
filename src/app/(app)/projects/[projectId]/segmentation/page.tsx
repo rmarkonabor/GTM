@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Building2, BarChart3 } from "lucide-react";
@@ -25,8 +27,8 @@ const SIZE_COLORS: Record<string, string> = {
   startup: "bg-violet-500/10 text-violet-400",
 };
 
-export default async function SegmentationPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function SegmentationPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

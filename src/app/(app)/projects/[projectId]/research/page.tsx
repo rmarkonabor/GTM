@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Users, MapPin, Building2, Zap } from "lucide-react";
@@ -21,8 +23,8 @@ interface ResearchOutput {
   questionsNeeded: unknown[];
 }
 
-export default async function ResearchPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function ResearchPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

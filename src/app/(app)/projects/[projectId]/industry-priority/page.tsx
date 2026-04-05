@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Building2, CheckCircle2, Lightbulb, Users } from "lucide-react";
@@ -22,8 +24,8 @@ const FIT_COLORS: Record<string, string> = {
   low: "bg-slate-500/10 text-slate-400",
 };
 
-export default async function IndustryPriorityPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function IndustryPriorityPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

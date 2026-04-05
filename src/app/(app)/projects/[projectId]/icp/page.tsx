@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Building2, User, MapPin, Cpu, DollarSign, Target } from "lucide-react";
@@ -26,8 +28,8 @@ interface ICPDefinition {
   buyerPersonas: BuyerPersona[];
 }
 
-export default async function ICPPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function ICPPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>
