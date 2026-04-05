@@ -44,7 +44,6 @@ export default function DashboardPage() {
 
   const deleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
     e.preventDefault();
-    e.stopPropagation();
     const confirmed = window.confirm(`Delete project "${projectName}"? This cannot be undone.`);
     if (!confirmed) return;
     const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
@@ -99,51 +98,53 @@ export default function DashboardPage() {
             const statusCfg = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.RESEARCHING;
             const Icon = statusCfg.icon;
             return (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <div className="group relative border border-slate-200 dark:border-white/10 rounded-xl p-5 hover:border-violet-400/50 hover:shadow-sm transition-all bg-white dark:bg-slate-900 cursor-pointer">
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => deleteProject(e, project.id, project.name)}
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10"
-                    title="Delete project"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-slate-900 dark:text-white truncate">
-                        {project.name}
-                      </h3>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">
-                        {project.websiteUrl}
-                      </p>
+              <div key={project.id} className="group relative">
+                <Link href={`/projects/${project.id}`}>
+                  <div className="border border-slate-200 dark:border-white/10 rounded-xl p-5 hover:border-violet-400/50 hover:shadow-sm transition-all bg-white dark:bg-slate-900 cursor-pointer">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="min-w-0 pr-8">
+                        <h3 className="font-semibold text-slate-900 dark:text-white truncate">
+                          {project.name}
+                        </h3>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">
+                          {project.websiteUrl}
+                        </p>
+                      </div>
+                      <Badge className={`ml-2 shrink-0 gap-1 ${statusCfg.color}`}>
+                        <Icon className={`h-3 w-3 ${project.status === "IN_PROGRESS" ? "animate-spin" : ""}`} />
+                        {statusCfg.label}
+                      </Badge>
                     </div>
-                    <Badge className={`ml-2 shrink-0 gap-1 ${statusCfg.color}`}>
-                      <Icon className={`h-3 w-3 ${project.status === "IN_PROGRESS" ? "animate-spin" : ""}`} />
-                      {statusCfg.label}
-                    </Badge>
+
+                    {/* Progress bar */}
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                        <span>Steps completed</span>
+                        <span>{completedSteps(project)}/9</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-violet-500 rounded-full transition-all"
+                          style={{ width: `${(completedSteps(project) / 9) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-400 mt-3">
+                      Created {new Date(project.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
+                </Link>
 
-                  {/* Progress bar */}
-                  <div className="mt-3">
-                    <div className="flex justify-between text-xs text-slate-400 mb-1.5">
-                      <span>Steps completed</span>
-                      <span>{completedSteps(project)}/9</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-violet-500 rounded-full transition-all"
-                        style={{ width: `${(completedSteps(project) / 9) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-400 mt-3">
-                    Created {new Date(project.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </Link>
+                {/* Delete button — outside <Link> to avoid navigation interference */}
+                <button
+                  onClick={(e) => deleteProject(e, project.id, project.name)}
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10"
+                  title="Delete project"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             );
           })}
         </div>
