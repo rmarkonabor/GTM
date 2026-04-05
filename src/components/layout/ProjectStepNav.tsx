@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, TrendingUp,
   Swords, Lightbulb, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
-  ChevronLeft
+  ChevronLeft, Clock
 } from "lucide-react";
 
 interface ProjectStep {
@@ -37,6 +37,7 @@ function StepStatusIcon({ status }: { status: string }) {
   if (status === "COMPLETE") return <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />;
   if (status === "RUNNING") return <Loader2 className="h-3.5 w-3.5 text-violet-400 animate-spin shrink-0" />;
   if (status === "ERROR") return <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />;
+  if (status === "AWAITING_APPROVAL") return <Clock className="h-3.5 w-3.5 text-yellow-400 shrink-0" />;
   return <Circle className="h-3.5 w-3.5 text-slate-600 shrink-0" />;
 }
 

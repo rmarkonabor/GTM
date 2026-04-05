@@ -26,7 +26,10 @@ export async function runManifesto(
   llm: { provider: string; apiKey: string }
 ): Promise<ManifestoOutput> {
   const context = buildStepContext(ctx);
-  const prompt = buildManifestoPrompt(context);
+  let prompt = buildManifestoPrompt(context);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "manifesto");
 
   const { object } = await generateObject({ model, schema, prompt });

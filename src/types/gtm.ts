@@ -215,4 +215,5 @@ export interface WorkflowContext {
   clarifyingAnswers: Record<string, string>;
   businessType: string;
   steps: Partial<StepOutputMap>;
+  editPrompt?: string; // For step re-runs with user refinements
 }

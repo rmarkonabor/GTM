@@ -101,12 +101,14 @@ model ProjectStep {
   status      StepStatus @default(PENDING)
   // Typed JSON output for each step
   output      Json?
+  draftOutput Json?
   // Error details
   errorCode   String?
   errorMsg    String?
   startedAt   DateTime?
   completedAt DateTime?
   updatedAt   DateTime   @updatedAt
+  versions    ProjectStepVersion[] @relation("ProjectStepVersions")
 
   @@unique([projectId, stepName])
   @@index([projectId])
@@ -127,6 +129,20 @@ enum StepName {
 enum StepStatus {
   PENDING
   RUNNING
+  AWAITING_APPROVAL
   COMPLETE
   ERROR
+}
+
+model ProjectStepVersion {
+  id          String      @id @default(cuid())
+  projectId   String
+  stepName    StepName
+  versionNum  Int
+  output      Json
+  prompt      String?
+  createdAt   DateTime    @default(now())
+  step        ProjectStep @relation("ProjectStepVersions", fields: [projectId, stepName], references: [projectId, stepName], onDelete: Cascade)
+
+  @@index([projectId, stepName])
 }

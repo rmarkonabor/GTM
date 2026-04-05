@@ -24,7 +24,10 @@ export async function runSegmentation(
   llm: { provider: string; apiKey: string }
 ): Promise<SegmentationOutput> {
   const context = buildStepContext(ctx);
-  const prompt = buildSegmentationPrompt(context);
+  let prompt = buildSegmentationPrompt(context);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "segmentation");
 
   const { object } = await generateObject({ model, schema, prompt });

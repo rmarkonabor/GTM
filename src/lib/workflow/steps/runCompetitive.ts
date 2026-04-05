@@ -28,7 +28,10 @@ export async function runCompetitive(
   llm: { provider: string; apiKey: string }
 ): Promise<CompetitiveAnalysisOutput> {
   const context = buildStepContext(ctx);
-  const prompt = buildCompetitivePrompt(context, ctx.businessType);
+  let prompt = buildCompetitivePrompt(context, ctx.businessType);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "competitive-analysis");
 
   const { object } = await generateObject({ model, schema, prompt });

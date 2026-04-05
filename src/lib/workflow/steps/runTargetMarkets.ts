@@ -24,7 +24,10 @@ export async function runTargetMarkets(
   llm: { provider: string; apiKey: string }
 ): Promise<TargetMarketsOutput> {
   const context = buildStepContext(ctx);
-  const prompt = buildTargetMarketsPrompt(context);
+  let prompt = buildTargetMarketsPrompt(context);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "target-markets");
 
   const { object } = await generateObject({ model, schema, prompt });

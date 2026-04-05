@@ -39,7 +39,10 @@ export async function runICP(
 ): Promise<ICPOutput> {
   const context = buildStepContext(ctx);
   const industries = ctx.steps.INDUSTRY_PRIORITY?.flatMap((ip) => ip.industries) ?? [];
-  const prompt = buildICPPrompt(context, industries);
+  let prompt = buildICPPrompt(context, industries);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "icp-creation");
 
   const { object } = await generateObject({ model, schema, prompt });

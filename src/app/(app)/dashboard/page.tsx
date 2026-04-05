@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Globe, CheckCircle2, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Globe, CheckCircle2, Clock, AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -41,6 +41,17 @@ export default function DashboardPage() {
 
   const completedSteps = (p: Project) =>
     p.steps.filter((s) => s.status === "COMPLETE").length;
+
+  const deleteProject = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const confirmed = window.confirm(`Delete project "${projectName}"? This cannot be undone.`);
+    if (!confirmed) return;
+    const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+    if (res.ok) {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    }
+  };
 
   return (
     <div className="p-8 max-w-5xl">
@@ -86,7 +97,16 @@ export default function DashboardPage() {
             const Icon = statusCfg.icon;
             return (
               <Link key={project.id} href={`/projects/${project.id}`}>
-                <div className="border border-slate-200 dark:border-white/10 rounded-xl p-5 hover:border-violet-400/50 hover:shadow-sm transition-all bg-white dark:bg-slate-900 cursor-pointer">
+                <div className="group relative border border-slate-200 dark:border-white/10 rounded-xl p-5 hover:border-violet-400/50 hover:shadow-sm transition-all bg-white dark:bg-slate-900 cursor-pointer">
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => deleteProject(e, project.id, project.name)}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10"
+                    title="Delete project"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
                   <div className="flex items-start justify-between mb-3">
                     <div className="min-w-0">
                       <h3 className="font-semibold text-slate-900 dark:text-white truncate">

@@ -23,7 +23,10 @@ export async function runPositioning(
   llm: { provider: string; apiKey: string }
 ): Promise<PositioningOutput> {
   const context = buildStepContext(ctx);
-  const prompt = buildPositioningPrompt(context);
+  let prompt = buildPositioningPrompt(context);
+  if (ctx.editPrompt) {
+    prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+  }
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "positioning");
 
   const { object } = await generateObject({ model, schema, prompt });

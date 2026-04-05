@@ -29,7 +29,10 @@ export async function runIndustryPriority(
 
   const results: IndustryPriorityOutput[] = [];
   for (const market of markets) {
-    const prompt = buildIndustryPriorityPrompt(context, market);
+    let prompt = buildIndustryPriorityPrompt(context, market);
+    if (ctx.editPrompt) {
+      prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
+    }
     const { object } = await generateObject({ model, schema, prompt });
     results.push(object as IndustryPriorityOutput);
   }

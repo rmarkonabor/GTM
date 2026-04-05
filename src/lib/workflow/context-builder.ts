@@ -1,4 +1,5 @@
 import { WorkflowContext } from "@/types/gtm";
+import { prisma } from "@/lib/db/client";
 
 export function buildStepContext(ctx: WorkflowContext): string {
   const parts: string[] = [];
@@ -49,4 +50,29 @@ export function buildStepContext(ctx: WorkflowContext): string {
   }
 
   return parts.join("\n");
+}
+
+export async function buildContextFromDB(projectId: string): Promise<WorkflowContext | null> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: { steps: true },
+  });
+  if (!project) return null;
+
+  const steps: Partial<WorkflowContext["steps"]> = {};
+  for (const s of project.steps) {
+    if (s.status === "COMPLETE" && s.output) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (steps as any)[s.stepName] = s.output;
+    }
+  }
+
+  return {
+    projectId,
+    websiteUrl: project.websiteUrl,
+    companyProfile: project.companyProfile as unknown as WorkflowContext["companyProfile"],
+    clarifyingAnswers: (project.clarifyingQs as { answers?: Record<string, string> })?.answers ?? {},
+    businessType: project.businessType ?? "other",
+    steps,
+  };
 }
