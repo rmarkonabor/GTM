@@ -53,48 +53,46 @@ export async function getMarketSize(
   persona?: BuyerPersona
 ): Promise<{ companies: number; contacts: number; filtersUsed: Record<string, unknown> }> {
   // --- People / contact filters ---
+  // Keys must NOT have [] suffix when sending JSON body ([] is query-string/form-data notation only)
   const peopleFilters: Record<string, unknown> = {};
 
   if (firmographics.companySize?.length) {
-    // Apollo format: "11,50" — our ICP prompt already generates this format
-    peopleFilters["organization_num_employees_ranges[]"] = firmographics.companySize.map((r) =>
+    peopleFilters.organization_num_employees_ranges = firmographics.companySize.map((r) =>
       r.replace("-", ",").replace("+", ",")
     );
   }
   if (firmographics.geographies?.length) {
-    peopleFilters["organization_locations[]"] = firmographics.geographies;
+    peopleFilters.organization_locations = firmographics.geographies;
   }
   if (firmographics.technologies?.length) {
-    peopleFilters["currently_using_any_of_technology_uids[]"] =
-      firmographics.technologies.map(toTechUid);
+    peopleFilters.currently_using_any_of_technology_uids = firmographics.technologies.map(toTechUid);
   }
   if (firmographics.apolloKeywordTags?.length) {
-    peopleFilters["q_organization_keyword_tags[]"] = firmographics.apolloKeywordTags;
+    peopleFilters.q_organization_keyword_tags = firmographics.apolloKeywordTags;
   }
   if (persona?.title) {
-    peopleFilters["person_titles[]"] = [persona.title];
+    peopleFilters.person_titles = [persona.title];
   }
   if (persona?.seniorities?.length) {
-    peopleFilters["person_seniorities[]"] = persona.seniorities;
+    peopleFilters.person_seniorities = persona.seniorities;
   }
 
   // --- Organization / company filters ---
   const orgFilters: Record<string, unknown> = {};
 
   if (firmographics.companySize?.length) {
-    orgFilters["organization_num_employees_ranges[]"] = firmographics.companySize.map((r) =>
+    orgFilters.organization_num_employees_ranges = firmographics.companySize.map((r) =>
       r.replace("-", ",").replace("+", ",")
     );
   }
   if (firmographics.geographies?.length) {
-    orgFilters["organization_locations[]"] = firmographics.geographies;
+    orgFilters.organization_locations = firmographics.geographies;
   }
   if (firmographics.technologies?.length) {
-    orgFilters["currently_using_any_of_technology_uids[]"] =
-      firmographics.technologies.map(toTechUid);
+    orgFilters.currently_using_any_of_technology_uids = firmographics.technologies.map(toTechUid);
   }
   if (firmographics.apolloKeywordTags?.length) {
-    orgFilters["q_organization_keyword_tags[]"] = firmographics.apolloKeywordTags;
+    orgFilters.q_organization_keyword_tags = firmographics.apolloKeywordTags;
   }
 
   // Run both queries in parallel:
