@@ -94,8 +94,8 @@ export interface ICPOutput {
 }
 
 // ─── Target Markets ──────────────────────────────────────────────────────────
-// Runs third — identifies the best markets, each with market-specific
-// firmographics and buyer personas derived from the ICP.
+// Runs third — identifies the best markets by problems, trends, and priority.
+// Firmographics and buyer personas are handled in the ICP step.
 
 export interface TargetMarket {
   id: string;
