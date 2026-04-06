@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, LayoutDashboard,
   Swords, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
-  ChevronLeft, Clock
+  ChevronLeft, Clock, Rocket
 } from "lucide-react";
 
 interface ProjectStep {
@@ -21,7 +21,7 @@ interface Project {
   steps: ProjectStep[];
 }
 
-const STEPS = [
+const STRATEGY_STEPS = [
   { key: "RESEARCH", label: "Research", icon: Search, path: "research" },
   { key: "INDUSTRY_PRIORITY", label: "Industry Priority", icon: Building2, path: "industry-priority" },
   { key: "TARGET_MARKETS", label: "Target Markets", icon: Target, path: "target-markets" },
@@ -37,6 +37,28 @@ function StepStatusIcon({ status }: { status: string }) {
   if (status === "ERROR") return <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />;
   if (status === "AWAITING_APPROVAL") return <Clock className="h-3.5 w-3.5 text-yellow-400 shrink-0" />;
   return <Circle className="h-3.5 w-3.5 text-slate-600 shrink-0" />;
+}
+
+function StepLink({ href, isActive, icon: Icon, label, status }: {
+  href: string; isActive: boolean; icon: React.ComponentType<{ className?: string }>;
+  label: string; status?: string;
+}) {
+  return (
+    <Link href={href}>
+      <div
+        className={cn(
+          "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+          isActive
+            ? "bg-violet-600/20 text-violet-300"
+            : "text-slate-400 hover:text-white hover:bg-white/5"
+        )}
+      >
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="flex-1 truncate">{label}</span>
+        {status && <StepStatusIcon status={status} />}
+      </div>
+    </Link>
+  );
 }
 
 export function ProjectStepNav({ project }: { project: Project }) {
@@ -56,47 +78,40 @@ export function ProjectStepNav({ project }: { project: Project }) {
       </div>
 
       {/* Steps */}
-      <nav className="flex-1 p-3 space-y-0.5">
-        {/* Dashboard link */}
-        {(() => {
-          const href = `/projects/${project.id}/dashboard`;
-          const isActive = pathname === href;
-          return (
-            <Link href={href}>
-              <div className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors mb-2 pb-2 border-b border-white/5",
-                isActive
-                  ? "bg-violet-600/20 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              )}>
-                <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">Dashboard</span>
-              </div>
-            </Link>
-          );
-        })()}
-        {STEPS.map((step) => {
-          const status = stepMap[step.key] ?? "PENDING";
-          const href = `/projects/${project.id}/${step.path}`;
-          const isActive = pathname === href;
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {/* Dashboard */}
+        <div className="mb-2 pb-2 border-b border-white/5">
+          <StepLink
+            href={`/projects/${project.id}/dashboard`}
+            isActive={pathname === `/projects/${project.id}/dashboard`}
+            icon={LayoutDashboard}
+            label="Dashboard"
+          />
+        </div>
 
-          return (
-            <Link key={step.key} href={href}>
-              <div
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                  isActive
-                    ? "bg-violet-600/20 text-violet-300"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <step.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{step.label}</span>
-                <StepStatusIcon status={status} />
-              </div>
-            </Link>
-          );
-        })}
+        {/* GTM Strategy group */}
+        <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+          GTM Strategy
+        </p>
+        {STRATEGY_STEPS.map((step) => (
+          <StepLink
+            key={step.key}
+            href={`/projects/${project.id}/${step.path}`}
+            isActive={pathname === `/projects/${project.id}/${step.path}`}
+            icon={step.icon}
+            label={step.label}
+            status={stepMap[step.key] ?? "PENDING"}
+          />
+        ))}
+
+        {/* Execution group */}
+        <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+          Execution
+        </p>
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-600">
+          <Rocket className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 truncate">Coming soon</span>
+        </div>
       </nav>
     </aside>
   );

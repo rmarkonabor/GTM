@@ -3,8 +3,10 @@
 import { use, useEffect, useState } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
-  ArrowRight, CheckCircle2, Loader2, Zap, TrendingUp, Globe, ChevronRight,
+  CheckCircle2, Loader2, TrendingUp, Globe, ChevronRight, Rocket,
 } from "lucide-react";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface StepData {
   stepName: string;
@@ -55,6 +57,7 @@ interface ICP {
 interface Competitor {
   name: string;
   valueProp: string;
+  targetSegment: string;
   whereClientWins: string[];
 }
 
@@ -62,7 +65,7 @@ interface Segment {
   name: string;
   sizeCategory: string;
   estimatedPriority: string;
-  positioning: {
+  positioning?: {
     messagingHook: string;
     keyPainPoints: string[];
     ourAngle: string;
@@ -89,10 +92,15 @@ const FIT_COLOR: Record<string, string> = {
   low: "text-slate-500",
 };
 
+type Tab = "strategy" | "execution";
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
 export default function DashboardPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>("strategy");
 
   useEffect(() => {
     fetch(`/api/projects/${projectId}`, { cache: "no-store" })
@@ -113,7 +121,6 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
 
   const stepMap: Record<string, unknown> = {};
   for (const s of project.steps) {
-    // Show the latest data: draftOutput for awaiting-approval, output for completed
     const data = s.status === "AWAITING_APPROVAL" ? (s.draftOutput ?? s.output) : s.output;
     if (data && (s.status === "COMPLETE" || s.status === "AWAITING_APPROVAL")) {
       stepMap[s.stepName] = data;
@@ -172,6 +179,55 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-slate-900 border border-white/10 rounded-xl p-1">
+        <TabButton
+          active={activeTab === "strategy"}
+          onClick={() => setActiveTab("strategy")}
+          icon={TrendingUp}
+          label="GTM Strategy"
+        />
+        <TabButton
+          active={activeTab === "execution"}
+          onClick={() => setActiveTab("execution")}
+          icon={Rocket}
+          label="Execution"
+        />
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "strategy" ? (
+        <StrategyTab
+          profile={profile}
+          industries={industries}
+          markets={markets}
+          icps={icps}
+          competitors={competitors}
+          segments={segments}
+          manifesto={manifesto}
+        />
+      ) : (
+        <ExecutionTab />
+      )}
+    </div>
+  );
+}
+
+// ─── Strategy Tab ───────────────────────────────────────────────────────────
+
+function StrategyTab({
+  profile, industries, markets, icps, competitors, segments, manifesto,
+}: {
+  profile: CompanyProfile | null;
+  industries: IndustryDef[] | undefined;
+  markets: TargetMarket[] | undefined;
+  icps: ICP[] | undefined;
+  competitors: Competitor[] | undefined;
+  segments: Segment[] | undefined;
+  manifesto: Manifesto | undefined;
+}) {
+  return (
+    <div className="space-y-8">
       {/* Manifesto — who + why */}
       {manifesto && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -327,14 +383,16 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
               <thead>
                 <tr className="border-b border-white/10 bg-slate-900">
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Competitor</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Market</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Their Play</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Where We Win</th>
                 </tr>
               </thead>
               <tbody>
-                {competitors.slice(0, 6).map((c) => (
+                {competitors.slice(0, 8).map((c) => (
                   <tr key={c.name} className="border-b border-white/5 hover:bg-slate-800/30">
                     <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{c.name}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{c.targetSegment}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs max-w-xs">{c.valueProp}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -377,7 +435,72 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
   );
 }
 
-// ─── Shared small components ─────────────────────────────────────────────────
+// ─── Execution Tab ──────────────────────────────────────────────────────────
+
+function ExecutionTab() {
+  return (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950/20 p-12 text-center">
+        {/* Decorative */}
+        <div className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 h-56 w-56 rounded-full bg-violet-500/5 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-1/4 h-32 w-32 rounded-full bg-purple-500/5 blur-3xl" />
+
+        <div className="relative">
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/25 flex items-center justify-center mb-5 shadow-xl shadow-violet-900/20">
+            <Rocket className="h-7 w-7 text-violet-400" />
+          </div>
+
+          <h2 className="text-2xl font-bold text-white mb-3">Execution Hub</h2>
+          <p className="text-slate-400 text-sm max-w-md mx-auto mb-8 leading-relaxed">
+            Turn your GTM strategy into action. Execution tools will help you generate outreach sequences, content plans, campaign briefs, and more — all powered by your strategy data.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {[
+              "Outreach Sequences",
+              "Content Calendar",
+              "Campaign Briefs",
+              "Sales Playbook",
+              "Email Templates",
+              "Landing Pages",
+            ].map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-slate-400"
+              >
+                <span className="h-1 w-1 rounded-full bg-violet-500" />
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <p className="mt-8 text-xs text-slate-600">Coming soon</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared components ──────────────────────────────────────────────────────
+
+function TabButton({ active, onClick, icon: Icon, label }: {
+  active: boolean; onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>; label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+        active
+          ? "bg-violet-600/20 text-violet-300 shadow-sm"
+          : "text-slate-400 hover:text-white hover:bg-white/5"
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
