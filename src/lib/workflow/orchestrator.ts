@@ -77,22 +77,12 @@ export const gtmWorkflow = inngest.createFunction(
       };
     });
 
-    // Find the next step to run — only after all prior steps are COMPLETE
-    const nextStepName = STEP_ORDER.find((s, idx) => {
+    // Find the next step to run (first that hasn't been started or is reset to PENDING)
+    const nextStepName = STEP_ORDER.find((s) => {
       const existing = loaded.steps.find(
         (ps: { stepName: StepName; status: string }) => ps.stepName === s
       );
-      // This step must be pending/unstarted
-      if (existing && existing.status !== "PENDING") return false;
-      // All prior steps must be COMPLETE
-      const priorSteps = STEP_ORDER.slice(0, idx);
-      const allPriorComplete = priorSteps.every((prior) => {
-        const priorStep = loaded.steps.find(
-          (ps: { stepName: StepName; status: string }) => ps.stepName === prior
-        );
-        return priorStep?.status === "COMPLETE";
-      });
-      return allPriorComplete;
+      return !existing || existing.status === "PENDING";
     });
 
     // All steps done — mark project complete
