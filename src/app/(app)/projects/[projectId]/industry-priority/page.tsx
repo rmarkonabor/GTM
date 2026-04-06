@@ -2,9 +2,10 @@
 
 import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
+import { EditableText, EditableChips, EditableList } from "@/components/shared/inline-edit";
 import { ExpandPanel } from "@/components/shared/ExpandPanel";
 import { Badge } from "@/components/ui/badge";
-import { Building2, CheckCircle2, Lightbulb, Users, Tag } from "lucide-react";
+import { Building2, CheckCircle2, Lightbulb, Users, Tag, Trash2 } from "lucide-react";
 
 interface IndustryDefinition {
   standardIndustry: string;
@@ -38,8 +39,15 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
       </p>
 
       <StepPageWrapper projectId={projectId} stepName="INDUSTRY_PRIORITY" stepLabel="Industry Priority">
-        {(output, refresh) => {
+        {(output, refresh, editMode, save) => {
           const { industries } = output as IndustryPriorityOutput;
+
+          const update = (rank: number, updates: Partial<IndustryDefinition>) =>
+            save({ industries: industries.map((i) => i.priorityRank === rank ? { ...i, ...updates } : i) });
+
+          const remove = (rank: number) =>
+            save({ industries: industries.filter((i) => i.priorityRank !== rank) });
+
           return (
             <div className="space-y-4">
               {industries.map((ind) => (
@@ -54,35 +62,72 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
                       <div>
                         <div className="flex items-center gap-2 mb-0.5">
                           <Building2 className="h-4 w-4 text-violet-400 shrink-0" />
-                          <h3 className="font-bold text-slate-900 dark:text-white">{ind.niche}</h3>
+                          <EditableText
+                            value={ind.niche}
+                            editMode={editMode}
+                            onSave={(v) => update(ind.priorityRank, { niche: v })}
+                            className="font-bold text-slate-900 dark:text-white"
+                          />
                         </div>
-                        <p className="text-xs text-slate-400">{ind.standardIndustry}</p>
+                        <EditableText
+                          value={ind.standardIndustry}
+                          editMode={editMode}
+                          onSave={(v) => update(ind.priorityRank, { standardIndustry: v })}
+                          className="text-xs text-slate-400"
+                        />
                       </div>
                     </div>
-                    <Badge className={`border ${FIT_COLORS[ind.estimatedMarketFit] ?? ""} shrink-0`}>
-                      {ind.estimatedMarketFit} fit
-                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge className={`border ${FIT_COLORS[ind.estimatedMarketFit] ?? ""}`}>
+                        {ind.estimatedMarketFit} fit
+                      </Badge>
+                      {editMode && (
+                        <button
+                          onClick={() => remove(ind.priorityRank)}
+                          className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Keywords */}
-                  {ind.keywords?.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap mb-4">
-                      <Tag className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      {ind.keywords.map((kw) => (
-                        <span
-                          key={kw}
-                          className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs"
-                        >
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    <Tag className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <EditableChips
+                      items={ind.keywords ?? []}
+                      onSave={(v) => update(ind.priorityRank, { keywords: v })}
+                      editMode={editMode}
+                    />
+                  </div>
 
                   {/* Details grid */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Section icon={Users} title="Pain Points" items={ind.painPoints} color="red" />
-                    <Section icon={CheckCircle2} title="What You Offer" items={ind.whatClientOffers} color="green" />
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Users className="h-3.5 w-3.5 text-red-400" />
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pain Points</h4>
+                      </div>
+                      <EditableList
+                        items={ind.painPoints ?? []}
+                        onSave={(v) => update(ind.priorityRank, { painPoints: v })}
+                        editMode={editMode}
+                        dotColor="bg-red-400"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">What You Offer</h4>
+                      </div>
+                      <EditableList
+                        items={ind.whatClientOffers ?? []}
+                        onSave={(v) => update(ind.priorityRank, { whatClientOffers: v })}
+                        editMode={editMode}
+                        dotColor="bg-green-400"
+                      />
+                    </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-2">
                         <Lightbulb className="h-3.5 w-3.5 text-blue-400" />
@@ -90,9 +135,13 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
                           How You Work Together
                         </h4>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                        {ind.howTheyWorkTogether}
-                      </p>
+                      <EditableText
+                        value={ind.howTheyWorkTogether}
+                        editMode={editMode}
+                        onSave={(v) => update(ind.priorityRank, { howTheyWorkTogether: v })}
+                        multiline
+                        className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed"
+                      />
                     </div>
                   </div>
                 </div>
@@ -109,44 +158,6 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
           );
         }}
       </StepPageWrapper>
-    </div>
-  );
-}
-
-const COLOR_TEXT: Record<string, string> = {
-  red: "text-red-400", green: "text-green-400", blue: "text-blue-400",
-  yellow: "text-yellow-400", violet: "text-violet-400",
-};
-const COLOR_BG: Record<string, string> = {
-  red: "bg-red-400", green: "bg-green-400", blue: "bg-blue-400",
-  yellow: "bg-yellow-400", violet: "bg-violet-400",
-};
-
-function Section({
-  icon: Icon,
-  title,
-  items,
-  color,
-}: {
-  icon: React.ElementType;
-  title: string;
-  items: string[];
-  color: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-2">
-        <Icon className={`h-3.5 w-3.5 ${COLOR_TEXT[color] ?? "text-slate-400"}`} />
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</h4>
-      </div>
-      <ul className="space-y-1.5">
-        {items.map((item, i) => (
-          <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-            <span className={`h-1 w-1 rounded-full ${COLOR_BG[color] ?? "bg-slate-400"} mt-1.5 shrink-0`} />
-            {item}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

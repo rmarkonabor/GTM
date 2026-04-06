@@ -2,6 +2,7 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
+import { EditableText, EditableChips, EditableList } from "@/components/shared/inline-edit";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Users, MapPin, Building2, Zap } from "lucide-react";
 
@@ -39,41 +40,76 @@ export default function ResearchPage({ params }: { params: Promise<{ projectId: 
         stepLabel="Company Research"
         onApproved={() => router.push(`/projects/${projectId}/industry-priority`)}
       >
-        {(output) => {
-          const { companyProfile: cp } = output as ResearchOutput;
+        {(output, refresh, editMode, save) => {
+          const { companyProfile: cp, questionsNeeded } = output as ResearchOutput;
+          const patch = (updates: Partial<CompanyProfile>) =>
+            save({ companyProfile: { ...cp, ...updates }, questionsNeeded });
+
           return (
             <div className="space-y-5">
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6">
                 <div className="flex items-start justify-between mb-3">
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">{cp.name}</h2>
-                  <Badge className="bg-violet-500/10 text-violet-400 capitalize">{cp.businessType?.replace("_", " ")}</Badge>
+                  <EditableText
+                    value={cp.name}
+                    editMode={editMode}
+                    onSave={(v) => patch({ name: v })}
+                    className="text-xl font-bold text-slate-900 dark:text-white"
+                  />
+                  <Badge className="bg-violet-500/10 text-violet-400 capitalize shrink-0 ml-3">
+                    {cp.businessType?.replace("_", " ")}
+                  </Badge>
                 </div>
-                <p className="text-slate-600 dark:text-slate-400">{cp.description}</p>
+                <EditableText
+                  value={cp.description}
+                  editMode={editMode}
+                  onSave={(v) => patch({ description: v })}
+                  multiline
+                  className="text-slate-600 dark:text-slate-400"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InfoCard icon={Zap} title="Primary Product" content={cp.primaryProduct} />
-                <InfoCard icon={Users} title="Target Audience" content={cp.targetAudience} />
-                <InfoCard icon={MapPin} title="Geographic Focus" content={cp.geographicFocus} />
-                {cp.teamSize && <InfoCard icon={Building2} title="Team Size" content={cp.teamSize} />}
+                <EditableInfoCard icon={Zap} title="Primary Product" value={cp.primaryProduct} editMode={editMode} onSave={(v) => patch({ primaryProduct: v })} />
+                <EditableInfoCard icon={Users} title="Target Audience" value={cp.targetAudience} editMode={editMode} onSave={(v) => patch({ targetAudience: v })} />
+                <EditableInfoCard icon={MapPin} title="Geographic Focus" value={cp.geographicFocus} editMode={editMode} onSave={(v) => patch({ geographicFocus: v })} />
+                {cp.teamSize && <EditableInfoCard icon={Building2} title="Team Size" value={cp.teamSize} editMode={editMode} onSave={(v) => patch({ teamSize: v })} />}
               </div>
 
-              {cp.keyDifferentiators?.length > 0 && (
-                <ListCard title="Key Differentiators" items={cp.keyDifferentiators} color="violet" />
+              {(cp.keyDifferentiators?.length > 0 || editMode) && (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Key Differentiators</h3>
+                  <EditableList
+                    items={cp.keyDifferentiators ?? []}
+                    onSave={(v) => patch({ keyDifferentiators: v })}
+                    editMode={editMode}
+                    dotColor="bg-violet-400"
+                    textClass="text-sm text-slate-600 dark:text-slate-400"
+                  />
+                </div>
               )}
-              {cp.currentCustomerExamples?.length > 0 && (
-                <ListCard title="Customer Examples" items={cp.currentCustomerExamples} color="green" />
+
+              {(cp.currentCustomerExamples?.length > 0 || editMode) && (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Customer Examples</h3>
+                  <EditableList
+                    items={cp.currentCustomerExamples ?? []}
+                    onSave={(v) => patch({ currentCustomerExamples: v })}
+                    editMode={editMode}
+                    dotColor="bg-green-400"
+                    textClass="text-sm text-slate-600 dark:text-slate-400"
+                  />
+                </div>
               )}
-              {cp.techStack?.length > 0 && (
+
+              {(cp.techStack?.length > 0 || editMode) && (
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
                   <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Tech Stack / Integrations</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {cp.techStack.map((t) => (
-                      <span key={t} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full text-xs">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
+                  <EditableChips
+                    items={cp.techStack ?? []}
+                    onSave={(v) => patch({ techStack: v })}
+                    editMode={editMode}
+                    chipClass="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  />
                 </div>
               )}
             </div>
@@ -84,35 +120,25 @@ export default function ResearchPage({ params }: { params: Promise<{ projectId: 
   );
 }
 
-function InfoCard({ icon: Icon, title, content }: { icon: React.ElementType; title: string; content: string }) {
+function EditableInfoCard({
+  icon: Icon, title, value, editMode, onSave,
+}: {
+  icon: React.ElementType; title: string; value: string;
+  editMode: boolean; onSave: (v: string) => void;
+}) {
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
       <div className="flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 text-violet-400" />
         <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</h3>
       </div>
-      <p className="text-slate-900 dark:text-white text-sm">{content}</p>
-    </div>
-  );
-}
-
-const COLOR_BG: Record<string, string> = {
-  violet: "bg-violet-400", green: "bg-green-400", blue: "bg-blue-400",
-  red: "bg-red-400", yellow: "bg-yellow-400", purple: "bg-purple-400",
-};
-
-function ListCard({ title, items, color }: { title: string; items: string[]; color: string }) {
-  return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
-      <h3 className="font-semibold text-slate-900 dark:text-white mb-3">{title}</h3>
-      <ul className="space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <span className={`h-1.5 w-1.5 rounded-full ${COLOR_BG[color] ?? "bg-slate-400"} mt-1.5 shrink-0`} />
-            {item}
-          </li>
-        ))}
-      </ul>
+      <EditableText
+        value={value}
+        editMode={editMode}
+        onSave={onSave}
+        multiline
+        className="text-slate-900 dark:text-white text-sm"
+      />
     </div>
   );
 }
