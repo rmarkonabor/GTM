@@ -19,10 +19,10 @@ export default async function CompetitiveAnalysisPage({ params }: { params: Prom
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Competitive Analysis</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Competitor Analysis</h1>
       <p className="text-slate-500 text-sm mb-6">Competitor comparison by segment. See where you win and where they win.</p>
 
-      <StepPageWrapper projectId={projectId} stepName="COMPETITIVE" stepLabel="Competitive Analysis">
+      <StepPageWrapper projectId={projectId} stepName="COMPETITIVE" stepLabel="Competitor Analysis">
         {(output) => {
           const { competitors } = output as { competitors: Competitor[]; isIndustrySpecific: boolean };
           return (

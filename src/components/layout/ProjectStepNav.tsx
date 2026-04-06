@@ -26,7 +26,7 @@ const STEPS = [
   { key: "INDUSTRY_PRIORITY", label: "Industry Priority", icon: Building2, path: "industry-priority" },
   { key: "TARGET_MARKETS", label: "Target Markets", icon: Target, path: "target-markets" },
   { key: "ICP", label: "ICP", icon: Users, path: "icp" },
-  { key: "COMPETITIVE", label: "Competitive", icon: Swords, path: "competitive-analysis" },
+  { key: "COMPETITIVE", label: "Competitor Analysis", icon: Swords, path: "competitive-analysis" },
   { key: "SEGMENTATION", label: "Segmentation", icon: BarChart3, path: "segmentation" },
   { key: "MARKET_SIZING", label: "Market Sizing", icon: TrendingUp, path: "market-sizing" },
   { key: "POSITIONING", label: "Positioning", icon: Lightbulb, path: "positioning" },

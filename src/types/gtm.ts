@@ -169,10 +169,10 @@ export interface Competitor {
 }
 
 export interface CompetitiveAnalysisOutput {
-  // For B2B SaaS: one list; for agency/services: keyed by industry
   competitors: Competitor[];
   isIndustrySpecific: boolean;
-  byIndustry?: Record<string, Competitor[]>;
+  // Array instead of Record to avoid JSON schema propertyNames (unsupported by some models)
+  byIndustry?: { industry: string; competitors: Competitor[] }[];
 }
 
 // ─── Positioning ─────────────────────────────────────────────────────────────

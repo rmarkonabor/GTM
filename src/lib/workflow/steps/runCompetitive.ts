@@ -22,7 +22,11 @@ const competitorSchema = z.object({
 const schema = z.object({
   competitors: z.array(competitorSchema),
   isIndustrySpecific: z.boolean(),
-  byIndustry: z.record(z.string(), z.array(competitorSchema)).nullable().optional(),
+  // Use array instead of record — z.record() generates propertyNames in JSON schema
+  // which Anthropic's API does not support
+  byIndustry: z.array(
+    z.object({ industry: z.string(), competitors: z.array(competitorSchema) })
+  ).nullable().optional(),
 });
 
 export async function runCompetitive(
