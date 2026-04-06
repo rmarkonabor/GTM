@@ -70,6 +70,7 @@ export interface Firmographics {
   industries: string[];  // standardIndustry values
   technologies: string[];
   businessModels: string[];
+  apolloKeywordTags: string[]; // Apollo q_organization_keyword_tags[] — lowercase industry/niche keywords Apollo indexes (e.g. "saas", "human resources software", "payroll")
 }
 
 export interface BuyerPersona {

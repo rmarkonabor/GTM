@@ -39,12 +39,13 @@ Return JSON:
       "niche": "HR Tech",
       "keywords": ["HRIS", "payroll", "workforce management", "employee onboarding"],
       "firmographics": {
-        "companySize": ["51,200", "201,500"],
+        "companySize": ["51,100", "101,200", "201,500"],
         "revenue": ["$5M-$50M"],
         "geographies": ["United States", "Canada"],
         "industries": ["Computer Software"],
         "technologies": ["Workday", "BambooHR"],
-        "businessModels": ["B2B", "SaaS"]
+        "businessModels": ["B2B", "SaaS"],
+        "apolloKeywordTags": ["human resources software", "hr technology", "payroll software", "workforce management", "saas"]
       },
       "buyerPersonas": [
         {
@@ -65,6 +66,15 @@ Rules:
 - industries in firmographics must also use standardIndustry values only
 - Apollo seniority values: "owner", "founder", "c_suite", "partner", "vp", "head", "director", "manager", "senior", "entry"
 - companySize must use Apollo ranges: "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
-- Be specific and actionable — these filters will be tested against real databases
+- apolloKeywordTags: 3–6 lowercase keywords that Apollo indexes as company tags for this industry/niche.
+  These power Apollo's q_organization_keyword_tags[] filter. Use terms that describe what companies in this
+  space DO or SELL, not company names. Examples by vertical:
+    HR Tech → ["human resources software", "hr technology", "payroll software", "workforce management"]
+    Legal Tech → ["legal software", "contract management", "e-discovery", "legal technology"]
+    Fintech → ["financial technology", "payments", "banking software", "fintech"]
+    Healthcare → ["health technology", "electronic health records", "healthcare software", "medical software"]
+    Construction → ["construction software", "project management", "construction technology"]
+  Use the niche + standardIndustry as anchors but express them as lowercase searchable tags.
+- Be specific and actionable — these filters will be tested against real Apollo databases
 - Return ONLY JSON, no markdown.`;
 }

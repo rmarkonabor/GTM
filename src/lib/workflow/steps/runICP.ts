@@ -14,6 +14,7 @@ const firmographicsSchema = z.object({
   industries: z.array(z.string()),
   technologies: z.array(z.string()),
   businessModels: z.array(z.string()),
+  apolloKeywordTags: z.array(z.string()).default([]),
 });
 
 const schema = z.object({

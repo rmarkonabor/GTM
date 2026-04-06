@@ -68,6 +68,9 @@ export async function getMarketSize(
     peopleFilters["currently_using_any_of_technology_uids[]"] =
       firmographics.technologies.map(toTechUid);
   }
+  if (firmographics.apolloKeywordTags?.length) {
+    peopleFilters["q_organization_keyword_tags[]"] = firmographics.apolloKeywordTags;
+  }
   if (persona?.title) {
     peopleFilters["person_titles[]"] = [persona.title];
   }
@@ -89,6 +92,9 @@ export async function getMarketSize(
   if (firmographics.technologies?.length) {
     orgFilters["currently_using_any_of_technology_uids[]"] =
       firmographics.technologies.map(toTechUid);
+  }
+  if (firmographics.apolloKeywordTags?.length) {
+    orgFilters["q_organization_keyword_tags[]"] = firmographics.apolloKeywordTags;
   }
 
   // Run both queries in parallel:
