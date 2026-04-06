@@ -22,9 +22,10 @@ interface Props {
   stepName: string;
   stepLabel: string;
   children: (output: unknown) => React.ReactNode;
+  onApproved?: () => void;
 }
 
-export function StepPageWrapper({ projectId, stepName, stepLabel, children }: Props) {
+export function StepPageWrapper({ projectId, stepName, stepLabel, children, onApproved }: Props) {
   const [step, setStep] = useState<StepData | null>(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
@@ -68,6 +69,11 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children }: Pr
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to approve");
       toast.success("Step approved! Next step will start shortly.");
       await refresh();
+      if (onApproved) {
+        // Brief pause so user sees the green "Approved" state before navigating
+        await new Promise((r) => setTimeout(r, 1200));
+        onApproved();
+      }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

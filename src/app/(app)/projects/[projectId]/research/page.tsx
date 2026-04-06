@@ -1,3 +1,6 @@
+"use client";
+import { use } from "react";
+import { useRouter } from "next/navigation";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
 import { Globe, Users, MapPin, Building2, Zap } from "lucide-react";
@@ -21,15 +24,21 @@ interface ResearchOutput {
   questionsNeeded: unknown[];
 }
 
-export default async function ResearchPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function ResearchPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
+  const router = useRouter();
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Company Research</h1>
       <p className="text-slate-500 text-sm mb-6">AI-extracted company profile from your website.</p>
 
-      <StepPageWrapper projectId={projectId} stepName="RESEARCH" stepLabel="Company Research">
+      <StepPageWrapper
+        projectId={projectId}
+        stepName="RESEARCH"
+        stepLabel="Company Research"
+        onApproved={() => router.push(`/projects/${projectId}/industry-priority`)}
+      >
         {(output) => {
           const { companyProfile: cp } = output as ResearchOutput;
           return (

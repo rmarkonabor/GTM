@@ -26,7 +26,7 @@ export function StepPending({ stepLabel }: Props) {
         {stepLabel} not started yet
       </h3>
       <p className="text-slate-400 text-sm">
-        Previous steps need to complete first.
+        This step will start automatically once the previous step is approved.
       </p>
     </div>
   );
