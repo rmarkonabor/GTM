@@ -3,7 +3,7 @@ import {
   ApolloAuthError,
   DatabaseApiError,
 } from "@/lib/errors/types";
-import { Firmographics, BuyerPersona } from "@/types/gtm";
+import { Firmographics, BuyerPersona, CompanyPreview } from "@/types/gtm";
 
 // Apollo v1 base — note the /api/v1 path (not /v1)
 const APOLLO_BASE = "https://api.apollo.io/api/v1";
@@ -16,7 +16,8 @@ function toTechUid(name: string): string {
 async function apolloPost(
   apiKey: string,
   endpoint: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  perPage = 1
 ): Promise<unknown> {
   const response = await fetch(`${APOLLO_BASE}${endpoint}`, {
     method: "POST",
@@ -25,7 +26,7 @@ async function apolloPost(
       "Cache-Control": "no-cache",
       "x-api-key": apiKey,
     },
-    body: JSON.stringify({ ...body, page: 1, per_page: 1 }),
+    body: JSON.stringify({ ...body, page: 1, per_page: perPage }),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -47,11 +48,37 @@ async function apolloPost(
   return response.json();
 }
 
+// Shape an Apollo organization record into our CompanyPreview
+interface ApolloOrg {
+  name?: string;
+  industry?: string;
+  estimated_num_employees?: number;
+  annual_revenue_printed?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  primary_domain?: string;
+  linkedin_url?: string;
+}
+
+function toCompanyPreview(org: ApolloOrg): CompanyPreview {
+  const location = [org.city, org.state, org.country].filter(Boolean).join(", ");
+  return {
+    name: org.name ?? "",
+    industry: org.industry ?? "",
+    employeeCount: org.estimated_num_employees ? String(org.estimated_num_employees) : "",
+    revenue: org.annual_revenue_printed ?? "",
+    location,
+    domain: org.primary_domain ?? "",
+    linkedinUrl: org.linkedin_url ?? "",
+  };
+}
+
 export async function getMarketSize(
   apiKey: string,
   firmographics: Firmographics,
   persona?: BuyerPersona
-): Promise<{ companies: number; contacts: number; filtersUsed: Record<string, unknown> }> {
+): Promise<{ companies: number; contacts: number; filtersUsed: Record<string, unknown>; companyPreview: CompanyPreview[] }> {
   // --- People / contact filters ---
   // Keys must NOT have [] suffix when sending JSON body ([] is query-string/form-data notation only)
   const peopleFilters: Record<string, unknown> = {};
@@ -96,21 +123,23 @@ export async function getMarketSize(
   }
 
   // Run both queries in parallel:
-  //   People: POST /mixed_people/api_search  → total at response.total_entries (root)
-  //   Orgs:   POST /mixed_companies/search   → total at response.pagination.total_entries
+  //   People (per_page=1): just need the total count
+  //   Orgs (per_page=25): need count + company preview rows
   const [peopleData, orgData] = await Promise.all([
-    apolloPost(apiKey, "/mixed_people/api_search", peopleFilters) as Promise<{
+    apolloPost(apiKey, "/mixed_people/api_search", peopleFilters, 1) as Promise<{
       total_entries?: number;
     }>,
-    apolloPost(apiKey, "/mixed_companies/search", orgFilters) as Promise<{
+    apolloPost(apiKey, "/mixed_companies/search", orgFilters, 25) as Promise<{
       pagination?: { total_entries?: number };
+      organizations?: ApolloOrg[];
     }>,
   ]);
 
   const contacts = peopleData.total_entries ?? 0;
   const companies = orgData.pagination?.total_entries ?? 0;
+  const companyPreview = (orgData.organizations ?? []).map(toCompanyPreview);
 
-  return { companies, contacts, filtersUsed: { ...peopleFilters, ...orgFilters } };
+  return { companies, contacts, filtersUsed: { ...peopleFilters, ...orgFilters }, companyPreview };
 }
 
 export async function testApolloKey(apiKey: string): Promise<boolean> {

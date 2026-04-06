@@ -1,9 +1,20 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, Download, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface CompanyPreview {
+  name: string;
+  industry: string;
+  employeeCount: string;
+  revenue: string;
+  location: string;
+  domain: string;
+  linkedinUrl: string;
+}
 
 interface MarketSizeResult {
   segmentName: string;
@@ -14,6 +25,7 @@ interface MarketSizeResult {
   tam_contacts: number;
   sam_contacts: number;
   som_contacts: number;
+  companyPreview?: CompanyPreview[];
 }
 
 interface MarketSizingOutput {
@@ -30,6 +42,120 @@ function fmt(n: number): string {
 }
 
 const COLORS = ["#7c3aed", "#a855f7", "#c084fc"];
+
+function downloadCSV(results: MarketSizeResult[]) {
+  const headers = ["Segment", "Company Name", "Industry", "Employee Count", "Revenue", "Location", "Domain", "LinkedIn"];
+  const rows: string[][] = [];
+
+  for (const r of results) {
+    for (const c of r.companyPreview ?? []) {
+      rows.push([r.segmentName, c.name, c.industry, c.employeeCount, c.revenue, c.location, c.domain, c.linkedinUrl]);
+    }
+  }
+
+  if (!rows.length) return;
+
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const csv = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "market-sizing-companies.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function CompanyTable({ results }: { results: MarketSizeResult[] }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const hasAny = results.some((r) => (r.companyPreview ?? []).length > 0);
+  if (!hasAny) return null;
+
+  const toggle = (seg: string) =>
+    setExpanded((prev) => ({ ...prev, [seg]: prev[seg] === false ? true : false }));
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-white/10">
+        <div>
+          <h3 className="font-semibold text-slate-900 dark:text-white">Company Preview</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Sample of matching companies from Apollo · up to 25 per segment</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => downloadCSV(results)}
+          className="border-white/20 text-slate-300 hover:text-white gap-2 text-sm"
+        >
+          <Download className="h-4 w-4" />
+          Download CSV
+        </Button>
+      </div>
+
+      {results.map((r) => {
+        const companies = r.companyPreview ?? [];
+        if (!companies.length) return null;
+        const isOpen = expanded[r.segmentName] !== false;
+
+        return (
+          <div key={r.segmentName}>
+            <button
+              onClick={() => toggle(r.segmentName)}
+              className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                {r.segmentName}{" "}
+                <span className="text-slate-400 font-normal">({companies.length} companies)</span>
+              </span>
+              {isOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+            </button>
+
+            {isOpen && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10">
+                      {["Company Name", "Industry", "Employees", "Revenue", "Location", "Domain", "LinkedIn"].map((h) => (
+                        <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-slate-400 uppercase tracking-wide whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companies.map((c, i) => (
+                      <tr key={i} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white whitespace-nowrap">{c.name || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.industry || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.employeeCount || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.revenue || "—"}</td>
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.location || "—"}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          {c.domain ? (
+                            <a href={`https://${c.domain}`} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 flex items-center gap-1">
+                              {c.domain} <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          {c.linkedinUrl ? (
+                            <a href={c.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 flex items-center gap-1 text-xs">
+                              LinkedIn <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MarketSizingPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
@@ -115,6 +241,9 @@ export default function MarketSizingPage({ params }: { params: Promise<{ project
                   </div>
                 ))}
               </div>
+
+              {/* Company preview table */}
+              <CompanyTable results={data.results} />
             </div>
           );
         }}

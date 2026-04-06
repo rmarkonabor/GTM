@@ -140,6 +140,16 @@ export interface SegmentationOutput {
 
 // ─── Market Sizing ───────────────────────────────────────────────────────────
 
+export interface CompanyPreview {
+  name: string;
+  industry: string;
+  employeeCount: string;
+  revenue: string;
+  location: string;
+  domain: string;
+  linkedinUrl: string;
+}
+
 export interface MarketSizeResult {
   segmentId: string;
   segmentName: string;
@@ -154,6 +164,7 @@ export interface MarketSizeResult {
   som_contacts: number;
   filtersUsed: Record<string, unknown>;
   fetchedAt: string;
+  companyPreview?: CompanyPreview[];
 }
 
 export interface MarketSizingOutput {

@@ -20,7 +20,7 @@ export async function runMarketSizing(
   for (const icp of icps) {
     try {
       const persona = icp.buyerPersonas[0];
-      const { companies, contacts, filtersUsed } = await getMarketSize(
+      const { companies, contacts, filtersUsed, companyPreview } = await getMarketSize(
         dbPrefs.apollo.apiKey,
         icp.firmographics,
         persona
@@ -38,6 +38,7 @@ export async function runMarketSizing(
         som_contacts: Math.round(contacts * 0.4 * 0.12),
         filtersUsed,
         fetchedAt: new Date().toISOString(),
+        companyPreview,
       });
     } catch (err) {
       // Always rethrow Apollo API errors — silent zeros are misleading
