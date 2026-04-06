@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, Sparkles, Clock, ChevronDown, ChevronUp, Cpu, Pencil, PencilOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function StepPageWrapper({ projectId, stepName, stepLabel, children, onApproved }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState<StepData | null>(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
@@ -65,9 +67,12 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       const found = await fetchStep();
       if (found) {
         setStep(found);
-        if (found.status !== "RUNNING") clearInterval(interval);
+        // Keep polling while the step is still in-flight (PENDING or RUNNING).
+        // Stop once we reach a stable state so we don't hammer the server.
+        const stable = ["COMPLETE", "AWAITING_APPROVAL", "ERROR"];
+        if (stable.includes(found.status)) clearInterval(interval);
       }
-    }, 4000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [projectId, stepName, fetchStep, refresh]);
 
@@ -85,6 +90,8 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       setStep((prev) =>
         prev ? { ...prev, status: "COMPLETE", output: prev.draftOutput } : prev
       );
+      // Refresh the server layout so the sidebar nav shows the green check
+      router.refresh();
       if (onApproved) {
         // Brief pause so user sees the green "Approved" state before navigating
         await new Promise((r) => setTimeout(r, 1200));
