@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, TrendingUp,
-  Swords, Lightbulb, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
+  Swords, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
   ChevronLeft, Clock
 } from "lucide-react";
 
@@ -27,9 +27,8 @@ const STEPS = [
   { key: "TARGET_MARKETS", label: "Target Markets", icon: Target, path: "target-markets" },
   { key: "ICP", label: "ICP", icon: Users, path: "icp" },
   { key: "COMPETITIVE", label: "Competitor Analysis", icon: Swords, path: "competitive-analysis" },
-  { key: "SEGMENTATION", label: "Segmentation", icon: BarChart3, path: "segmentation" },
   { key: "MARKET_SIZING", label: "Market Sizing", icon: TrendingUp, path: "market-sizing" },
-  { key: "POSITIONING", label: "Positioning", icon: Lightbulb, path: "positioning" },
+  { key: "SEGMENTATION", label: "Segments & Positioning", icon: BarChart3, path: "segmentation" },
   { key: "MANIFESTO", label: "Manifesto", icon: MessageSquare, path: "manifesto" },
 ];
 

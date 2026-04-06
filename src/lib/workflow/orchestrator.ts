@@ -10,20 +10,18 @@ import { runTargetMarkets } from "./steps/runTargetMarkets";
 import { runCompetitive } from "./steps/runCompetitive";
 import { runSegmentation } from "./steps/runSegmentation";
 import { runMarketSizing } from "./steps/runMarketSizing";
-import { runPositioning } from "./steps/runPositioning";
 import { runManifesto } from "./steps/runManifesto";
 
 // Canonical order — must match the restore route and nav
-// INDUSTRY_PRIORITY → TARGET_MARKETS → ICP → COMPETITIVE → SEGMENTATION → MARKET_SIZING → POSITIONING → MANIFESTO
-// ICP comes after TARGET_MARKETS so it can create market-specific profiles
+// INDUSTRY_PRIORITY → TARGET_MARKETS → ICP → COMPETITIVE → MARKET_SIZING → SEGMENTATION → MANIFESTO
+// Segmentation comes after Market Sizing so it can use real company counts per segment
 const STEP_ORDER: StepName[] = [
   "INDUSTRY_PRIORITY",
   "TARGET_MARKETS",
   "ICP",
   "COMPETITIVE",
-  "SEGMENTATION",
   "MARKET_SIZING",
-  "POSITIONING",
+  "SEGMENTATION",
   "MANIFESTO",
 ];
 
@@ -77,12 +75,12 @@ export const gtmWorkflow = inngest.createFunction(
       };
     });
 
-    // Find the next step to run (first that hasn't been started or is reset to PENDING)
+    // Find the next step to run (first that hasn't been started or is reset to PENDING/ERROR)
     const nextStepName = STEP_ORDER.find((s) => {
       const existing = loaded.steps.find(
         (ps: { stepName: StepName; status: string }) => ps.stepName === s
       );
-      return !existing || existing.status === "PENDING";
+      return !existing || existing.status === "PENDING" || existing.status === "ERROR";
     });
 
     // All steps done — mark project complete
@@ -153,10 +151,6 @@ export const gtmWorkflow = inngest.createFunction(
           }
           case "MARKET_SIZING": {
             const r = await runMarketSizing(ctx, llmPreference, dbPreferences);
-            output = r.output; tokenUsage = r.usage; break;
-          }
-          case "POSITIONING": {
-            const r = await runPositioning(ctx, llmPreference);
             output = r.output; tokenUsage = r.usage; break;
           }
           case "MANIFESTO": {

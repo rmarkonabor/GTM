@@ -13,7 +13,6 @@ import { runICP } from "@/lib/workflow/steps/runICP";
 import { runSegmentation } from "@/lib/workflow/steps/runSegmentation";
 import { runMarketSizing } from "@/lib/workflow/steps/runMarketSizing";
 import { runCompetitive } from "@/lib/workflow/steps/runCompetitive";
-import { runPositioning } from "@/lib/workflow/steps/runPositioning";
 import { runManifesto } from "@/lib/workflow/steps/runManifesto";
 import { z } from "zod";
 
@@ -29,7 +28,6 @@ const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = 
   SEGMENTATION: runSegmentation,
   MARKET_SIZING: (ctx, llm, db) => runMarketSizing(ctx, llm, db ?? {}),
   COMPETITIVE: runCompetitive,
-  POSITIONING: runPositioning,
   MANIFESTO: runManifesto,
 };
 

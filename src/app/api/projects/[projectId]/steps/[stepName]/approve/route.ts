@@ -5,6 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { inngest } from "@/../inngest/client";
 import { errorResponse } from "@/lib/errors/handlers";
+import { Prisma } from "@prisma/client";
+
+const WORKFLOW_STEP_ORDER = ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP", "COMPETITIVE", "MARKET_SIZING", "SEGMENTATION", "MANIFESTO"];
 
 export async function POST(
   _req: NextRequest,
@@ -42,6 +45,21 @@ export async function POST(
       name: "gtm/workflow.start",
       data: { projectId },
     });
+
+    // Reset the immediate next step to PENDING if it's stale (AWAITING_APPROVAL or ERROR)
+    // so the orchestrator can re-run it with fresh context after a re-edit
+    const currentIdx = WORKFLOW_STEP_ORDER.indexOf(stepName);
+    const nextStep = WORKFLOW_STEP_ORDER[currentIdx + 1];
+    if (nextStep) {
+      await prisma.projectStep.updateMany({
+        where: {
+          projectId,
+          stepName: nextStep as never,
+          status: { in: ["AWAITING_APPROVAL", "ERROR"] },
+        },
+        data: { status: "PENDING", draftOutput: Prisma.DbNull },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

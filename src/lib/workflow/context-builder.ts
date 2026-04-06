@@ -45,11 +45,6 @@ export function buildStepContext(ctx: WorkflowContext): string {
     parts.push(JSON.stringify(ctx.steps.MARKET_SIZING, null, 2));
   }
 
-  if (ctx.steps.POSITIONING) {
-    parts.push("\n=== POSITIONING ===");
-    parts.push(JSON.stringify(ctx.steps.POSITIONING, null, 2));
-  }
-
   return parts.join("\n");
 }
 

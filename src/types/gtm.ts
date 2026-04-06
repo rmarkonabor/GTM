@@ -111,7 +111,16 @@ export interface TargetMarketsOutput {
   markets: TargetMarket[]; // max 5
 }
 
-// ─── Segmentation ────────────────────────────────────────────────────────────
+// ─── Segmentation + Positioning ──────────────────────────────────────────────
+// Runs after Market Sizing — segments with per-segment positioning strategy.
+
+export interface SegmentPositioning {
+  keyPainPoints: string[];   // top pain points specific to this segment
+  ourAngle: string;          // how we position our product for this segment
+  messagingHook: string;     // main headline message for this segment
+  proofPoints: string[];     // evidence / ROI statements
+  ctaApproach: string;       // what action to drive (demo, trial, consultation, etc.)
+}
 
 export interface Segment {
   id: string;
@@ -121,6 +130,7 @@ export interface Segment {
   industries: string[];
   estimatedPriority: "tier-1" | "tier-2" | "tier-3";
   rationale: string;
+  positioning: SegmentPositioning;
 }
 
 export interface SegmentationOutput {
@@ -173,19 +183,6 @@ export interface CompetitiveAnalysisOutput {
   byIndustry?: { industry: string; competitors: Competitor[] }[];
 }
 
-// ─── Positioning ─────────────────────────────────────────────────────────────
-
-export interface PositioningOutput {
-  uniqueValueProp: string;
-  differentiationPoints: string[];
-  positioningStatement: string;
-  bySegment: Array<{
-    segmentName: string;
-    keyPlayers: string[];
-    differentiationAngle: string;
-  }>;
-}
-
 // ─── Manifesto / Messaging ───────────────────────────────────────────────────
 
 export interface ManifestoOutput {
@@ -212,7 +209,6 @@ export type StepOutputMap = {
   SEGMENTATION: SegmentationOutput;
   MARKET_SIZING: MarketSizingOutput;
   COMPETITIVE: CompetitiveAnalysisOutput;
-  POSITIONING: PositioningOutput;
   MANIFESTO: ManifestoOutput;
 };
 
