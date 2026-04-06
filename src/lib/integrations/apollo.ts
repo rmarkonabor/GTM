@@ -124,12 +124,12 @@ export async function getMarketSize(
 
   // Run both queries in parallel:
   //   People (per_page=1): just need the total count
-  //   Orgs (per_page=25): need count + company preview rows
+  //   Orgs (per_page=100): Apollo's max — get as many companies as possible in one call
   const [peopleData, orgData] = await Promise.all([
     apolloPost(apiKey, "/mixed_people/api_search", peopleFilters, 1) as Promise<{
       total_entries?: number;
     }>,
-    apolloPost(apiKey, "/mixed_companies/search", orgFilters, 25) as Promise<{
+    apolloPost(apiKey, "/mixed_companies/search", orgFilters, 100) as Promise<{
       pagination?: { total_entries?: number };
       organizations?: ApolloOrg[];
     }>,

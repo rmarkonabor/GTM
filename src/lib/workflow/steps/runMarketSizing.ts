@@ -1,6 +1,11 @@
-import { WorkflowContext, MarketSizingOutput, MarketSizeResult, WorkflowStepResult } from "@/types/gtm";
+import { WorkflowContext, MarketSizingOutput, MarketSizeResult, WorkflowStepResult, CompanyPreview } from "@/types/gtm";
 import { StepDependencyError } from "@/lib/errors/types";
 import { getMarketSize } from "@/lib/integrations/apollo";
+
+// Unique key for a company — prefer domain, fall back to lowercase name
+function companyKey(c: CompanyPreview): string {
+  return (c.domain || c.name).toLowerCase().trim();
+}
 
 export async function runMarketSizing(
   ctx: WorkflowContext,
@@ -18,32 +23,39 @@ export async function runMarketSizing(
   const results: MarketSizeResult[] = [];
 
   for (const icp of icps) {
-    try {
-      const persona = icp.buyerPersonas[0];
-      const { companies, contacts, filtersUsed, companyPreview } = await getMarketSize(
-        dbPrefs.apollo.apiKey,
-        icp.firmographics,
-        persona
-      );
+    const persona = icp.buyerPersonas[0];
+    const { companies, contacts, filtersUsed, companyPreview } = await getMarketSize(
+      dbPrefs.apollo.apiKey,
+      icp.firmographics,
+      persona
+    );
 
-      results.push({
-        segmentId: icp.standardIndustry,
-        segmentName: icp.niche || icp.standardIndustry,
-        database: "apollo",
-        tam_companies: companies,
-        sam_companies: Math.round(companies * 0.4),
-        som_companies: Math.round(companies * 0.4 * 0.12),
-        tam_contacts: contacts,
-        sam_contacts: Math.round(contacts * 0.4),
-        som_contacts: Math.round(contacts * 0.4 * 0.12),
-        filtersUsed,
-        fetchedAt: new Date().toISOString(),
-        companyPreview,
-      });
-    } catch (err) {
-      // Always rethrow Apollo API errors — silent zeros are misleading
-      throw err;
-    }
+    results.push({
+      segmentId: icp.standardIndustry,
+      segmentName: icp.niche || icp.standardIndustry,
+      database: "apollo",
+      tam_companies: companies,
+      sam_companies: Math.round(companies * 0.4),
+      som_companies: Math.round(companies * 0.4 * 0.12),
+      tam_contacts: contacts,
+      sam_contacts: Math.round(contacts * 0.4),
+      som_contacts: Math.round(contacts * 0.4 * 0.12),
+      filtersUsed,
+      fetchedAt: new Date().toISOString(),
+      companyPreview,
+    });
+  }
+
+  // Deduplicate companies across segments — a company appearing in multiple
+  // segments should only show once (in the first segment it appears in)
+  const seen = new Set<string>();
+  for (const result of results) {
+    result.companyPreview = (result.companyPreview ?? []).filter((c) => {
+      const key = companyKey(c);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   const totalTAM = results.reduce((sum, r) => sum + r.tam_companies, 0);
