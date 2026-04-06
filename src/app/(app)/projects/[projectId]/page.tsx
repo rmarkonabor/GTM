@@ -14,7 +14,6 @@ const STEP_PATHS: Record<string, string> = {
   INDUSTRY_PRIORITY: "industry-priority",
   ICP: "icp",
   SEGMENTATION: "segmentation",
-  MARKET_SIZING: "market-sizing",
   COMPETITIVE: "competitive-analysis",
   POSITIONING: "positioning",
   MANIFESTO: "manifesto",

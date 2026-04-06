@@ -9,7 +9,7 @@ import { z } from "zod";
 
 const STEP_ORDER = [
   "RESEARCH", "INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP",
-  "COMPETITIVE", "SEGMENTATION", "MARKET_SIZING", "POSITIONING", "MANIFESTO"
+  "COMPETITIVE", "SEGMENTATION", "MANIFESTO"
 ] as const;
 
 const schema = z.object({ versionNum: z.number().int().positive() });

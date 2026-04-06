@@ -40,11 +40,6 @@ export function buildStepContext(ctx: WorkflowContext): string {
     parts.push(JSON.stringify(ctx.steps.SEGMENTATION, null, 2));
   }
 
-  if (ctx.steps.MARKET_SIZING) {
-    parts.push("\n=== MARKET SIZING DATA ===");
-    parts.push(JSON.stringify(ctx.steps.MARKET_SIZING, null, 2));
-  }
-
   return parts.join("\n");
 }
 

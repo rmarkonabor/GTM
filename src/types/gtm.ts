@@ -138,41 +138,6 @@ export interface SegmentationOutput {
   segments: Segment[];
 }
 
-// ─── Market Sizing ───────────────────────────────────────────────────────────
-
-export interface CompanyPreview {
-  name: string;
-  industry: string;
-  employeeCount: string;
-  revenue: string;
-  location: string;
-  domain: string;
-  linkedinUrl: string;
-}
-
-export interface MarketSizeResult {
-  segmentId: string;
-  segmentName: string;
-  database: "apollo" | "clay";
-  // Company level
-  tam_companies: number;
-  sam_companies: number;
-  som_companies: number;
-  // Persona level
-  tam_contacts: number;
-  sam_contacts: number;
-  som_contacts: number;
-  filtersUsed: Record<string, unknown>;
-  fetchedAt: string;
-  companyPreview?: CompanyPreview[];
-}
-
-export interface MarketSizingOutput {
-  results: MarketSizeResult[];
-  totalTAM_companies: number;
-  totalSAM_companies: number;
-  totalSOM_companies: number;
-}
 
 // ─── Competitive Analysis ────────────────────────────────────────────────────
 
@@ -219,7 +184,6 @@ export type StepOutputMap = {
   ICP: ICPOutput;
   TARGET_MARKETS: TargetMarketsOutput;
   SEGMENTATION: SegmentationOutput;
-  MARKET_SIZING: MarketSizingOutput;
   COMPETITIVE: CompetitiveAnalysisOutput;
   MANIFESTO: ManifestoOutput;
 };

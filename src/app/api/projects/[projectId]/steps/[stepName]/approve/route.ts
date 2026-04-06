@@ -7,7 +7,7 @@ import { inngest } from "@/../inngest/client";
 import { errorResponse } from "@/lib/errors/handlers";
 import { Prisma } from "@prisma/client";
 
-const WORKFLOW_STEP_ORDER = ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP", "COMPETITIVE", "MARKET_SIZING", "SEGMENTATION", "MANIFESTO"];
+const WORKFLOW_STEP_ORDER = ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP", "COMPETITIVE", "SEGMENTATION", "MANIFESTO"];
 
 export async function POST(
   _req: NextRequest,

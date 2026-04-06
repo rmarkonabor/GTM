@@ -11,7 +11,6 @@ import { runTargetMarkets } from "@/lib/workflow/steps/runTargetMarkets";
 import { runIndustryPriority } from "@/lib/workflow/steps/runIndustryPriority";
 import { runICP } from "@/lib/workflow/steps/runICP";
 import { runSegmentation } from "@/lib/workflow/steps/runSegmentation";
-import { runMarketSizing } from "@/lib/workflow/steps/runMarketSizing";
 import { runCompetitive } from "@/lib/workflow/steps/runCompetitive";
 import { runManifesto } from "@/lib/workflow/steps/runManifesto";
 import { z } from "zod";
@@ -26,7 +25,6 @@ const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = 
   INDUSTRY_PRIORITY: runIndustryPriority,
   ICP: runICP,
   SEGMENTATION: runSegmentation,
-  MARKET_SIZING: (ctx, llm, db) => runMarketSizing(ctx, llm, db ?? {}),
   COMPETITIVE: runCompetitive,
   MANIFESTO: runManifesto,
 };

@@ -9,18 +9,14 @@ import { runICP } from "./steps/runICP";
 import { runTargetMarkets } from "./steps/runTargetMarkets";
 import { runCompetitive } from "./steps/runCompetitive";
 import { runSegmentation } from "./steps/runSegmentation";
-import { runMarketSizing } from "./steps/runMarketSizing";
 import { runManifesto } from "./steps/runManifesto";
 
 // Canonical order — must match the restore route and nav
-// INDUSTRY_PRIORITY → TARGET_MARKETS → ICP → COMPETITIVE → MARKET_SIZING → SEGMENTATION → MANIFESTO
-// Segmentation comes after Market Sizing so it can use real company counts per segment
 const STEP_ORDER: StepName[] = [
   "INDUSTRY_PRIORITY",
   "TARGET_MARKETS",
   "ICP",
   "COMPETITIVE",
-  "MARKET_SIZING",
   "SEGMENTATION",
   "MANIFESTO",
 ];
@@ -148,10 +144,6 @@ export const gtmWorkflow = inngest.createFunction(
           }
           case "SEGMENTATION": {
             const r = await runSegmentation(ctx, llmPreference);
-            output = r.output; tokenUsage = r.usage; break;
-          }
-          case "MARKET_SIZING": {
-            const r = await runMarketSizing(ctx, llmPreference, dbPreferences);
             output = r.output; tokenUsage = r.usage; break;
           }
           case "MANIFESTO": {
