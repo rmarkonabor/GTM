@@ -21,7 +21,7 @@ interface Props {
   projectId: string;
   stepName: string;
   stepLabel: string;
-  children: (output: unknown) => React.ReactNode;
+  children: (output: unknown, refresh: () => Promise<void>) => React.ReactNode;
   onApproved?: () => void;
 }
 
@@ -135,7 +135,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   return (
     <div className="space-y-4">
       {/* Main output */}
-      {children(displayOutput)}
+      {children(displayOutput, refresh)}
 
       {/* Approval / Edit panel */}
       <div className={`rounded-xl border p-5 space-y-4 ${isAwaiting ? "border-violet-500/30 bg-violet-500/5" : "border-white/10 bg-slate-900"}`}>

@@ -8,8 +8,8 @@ import { errorResponse } from "@/lib/errors/handlers";
 import { z } from "zod";
 
 const STEP_ORDER = [
-  "RESEARCH", "TARGET_MARKETS", "INDUSTRY_PRIORITY", "ICP",
-  "SEGMENTATION", "MARKET_SIZING", "COMPETITIVE", "POSITIONING", "MANIFESTO"
+  "RESEARCH", "INDUSTRY_PRIORITY", "ICP", "TARGET_MARKETS",
+  "COMPETITIVE", "SEGMENTATION", "MARKET_SIZING", "POSITIONING", "MANIFESTO"
 ] as const;
 
 const schema = z.object({ versionNum: z.number().int().positive() });

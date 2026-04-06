@@ -23,12 +23,12 @@ interface Project {
 
 const STEPS = [
   { key: "RESEARCH", label: "Research", icon: Search, path: "research" },
-  { key: "TARGET_MARKETS", label: "Target Markets", icon: Target, path: "target-markets" },
   { key: "INDUSTRY_PRIORITY", label: "Industry Priority", icon: Building2, path: "industry-priority" },
   { key: "ICP", label: "ICP", icon: Users, path: "icp" },
+  { key: "TARGET_MARKETS", label: "Target Markets", icon: Target, path: "target-markets" },
+  { key: "COMPETITIVE", label: "Competitive", icon: Swords, path: "competitive-analysis" },
   { key: "SEGMENTATION", label: "Segmentation", icon: BarChart3, path: "segmentation" },
   { key: "MARKET_SIZING", label: "Market Sizing", icon: TrendingUp, path: "market-sizing" },
-  { key: "COMPETITIVE", label: "Competitive", icon: Swords, path: "competitive-analysis" },
   { key: "POSITIONING", label: "Positioning", icon: Lightbulb, path: "positioning" },
   { key: "MANIFESTO", label: "Manifesto", icon: MessageSquare, path: "manifesto" },
 ];

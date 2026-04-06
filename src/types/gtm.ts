@@ -41,7 +41,59 @@ export interface ResearchOutput {
   questionsNeeded: ClarifyingQuestion[];
 }
 
+// ─── Industry Priority ───────────────────────────────────────────────────────
+// Runs first (before ICP and Target Markets) — identifies which industries
+// the company should target, using database-compatible classifications.
+
+export interface IndustryDefinition {
+  standardIndustry: string;   // Apollo/LinkedIn-compatible: "Computer Software", "Financial Services"
+  niche: string;              // Sub-segment: "HR Tech", "Legal Tech", "Fintech for SMBs"
+  keywords: string[];         // Targeting terms: ["HRIS", "payroll", "workforce management"]
+  priorityRank: number;
+  painPoints: string[];
+  whatClientOffers: string[];
+  howTheyWorkTogether: string;
+  estimatedMarketFit: "high" | "medium" | "low";
+}
+
+export interface IndustryPriorityOutput {
+  industries: IndustryDefinition[];
+}
+
+// ─── ICP ─────────────────────────────────────────────────────────────────────
+// Runs second — defines ideal customer profiles per priority industry.
+
+export interface Firmographics {
+  companySize: string[]; // Apollo ranges: "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
+  revenue: string[];     // e.g. ["$1M-$10M", "$10M-$50M"]
+  geographies: string[];
+  industries: string[];  // standardIndustry values
+  technologies: string[];
+  businessModels: string[];
+}
+
+export interface BuyerPersona {
+  title: string;
+  seniorities: string[]; // Apollo: "owner" | "founder" | "c_suite" | "partner" | "vp" | "head" | "director" | "manager" | "senior" | "entry"
+  departments: string[];
+  goals: string[];
+  challenges: string[];
+  triggerEvents: string[];
+}
+
+export interface ICPDefinition {
+  industryName: string; // references IndustryDefinition.niche
+  firmographics: Firmographics;
+  buyerPersonas: BuyerPersona[];
+}
+
+export interface ICPOutput {
+  icps: ICPDefinition[];
+}
+
 // ─── Target Markets ──────────────────────────────────────────────────────────
+// Runs third — identifies the best markets, each with market-specific
+// firmographics and buyer personas derived from the ICP.
 
 export interface TargetMarket {
   id: string;
@@ -51,56 +103,12 @@ export interface TargetMarket {
   macroTrends: string[];
   whyRightMarket: string;
   priorityScore: number; // 1-10
-}
-
-export interface TargetMarketsOutput {
-  markets: TargetMarket[]; // max 5
-}
-
-// ─── Industry Priority ───────────────────────────────────────────────────────
-
-export interface IndustryDefinition {
-  industryName: string;
-  priorityRank: number;
-  painPoints: string[];
-  whatClientOffers: string[];
-  howTheyWorkTogether: string;
-  estimatedMarketFit: "high" | "medium" | "low";
-}
-
-export interface IndustryPriorityOutput {
-  targetMarketId: string;
-  industries: IndustryDefinition[];
-}
-
-// ─── ICP ─────────────────────────────────────────────────────────────────────
-
-export interface Firmographics {
-  companySize: string[]; // e.g. ["11-50", "51-200"]
-  revenue: string[]; // e.g. ["$1M-$10M"]
-  geographies: string[];
-  industries: string[];
-  technologies: string[];
-  businessModels: string[];
-}
-
-export interface BuyerPersona {
-  title: string;
-  seniorities: string[]; // e.g. ["vp", "director"]
-  departments: string[];
-  goals: string[];
-  challenges: string[];
-  triggerEvents: string[];
-}
-
-export interface ICPDefinition {
-  industryName: string;
   firmographics: Firmographics;
   buyerPersonas: BuyerPersona[];
 }
 
-export interface ICPOutput {
-  icps: ICPDefinition[];
+export interface TargetMarketsOutput {
+  markets: TargetMarket[]; // max 5
 }
 
 // ─── Segmentation ────────────────────────────────────────────────────────────
@@ -198,9 +206,9 @@ export interface ManifestoOutput {
 
 export type StepOutputMap = {
   RESEARCH: ResearchOutput;
-  TARGET_MARKETS: TargetMarketsOutput;
-  INDUSTRY_PRIORITY: IndustryPriorityOutput[];
+  INDUSTRY_PRIORITY: IndustryPriorityOutput;
   ICP: ICPOutput;
+  TARGET_MARKETS: TargetMarketsOutput;
   SEGMENTATION: SegmentationOutput;
   MARKET_SIZING: MarketSizingOutput;
   COMPETITIVE: CompetitiveAnalysisOutput;

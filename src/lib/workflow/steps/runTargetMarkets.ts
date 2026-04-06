@@ -5,6 +5,24 @@ import { getLanguageModel } from "@/lib/ai/providers";
 import { buildStepContext } from "../context-builder";
 import { buildTargetMarketsPrompt } from "@/lib/ai/prompts/target-markets";
 
+const firmographicsSchema = z.object({
+  companySize: z.array(z.string()),
+  revenue: z.array(z.string()),
+  geographies: z.array(z.string()),
+  industries: z.array(z.string()),
+  technologies: z.array(z.string()),
+  businessModels: z.array(z.string()),
+});
+
+const buyerPersonaSchema = z.object({
+  title: z.string(),
+  seniorities: z.array(z.string()),
+  departments: z.array(z.string()),
+  goals: z.array(z.string()),
+  challenges: z.array(z.string()),
+  triggerEvents: z.array(z.string()),
+});
+
 const schema = z.object({
   markets: z.array(
     z.object({
@@ -15,6 +33,8 @@ const schema = z.object({
       macroTrends: z.array(z.string()),
       whyRightMarket: z.string(),
       priorityScore: z.number(),
+      firmographics: firmographicsSchema,
+      buyerPersonas: z.array(buyerPersonaSchema),
     })
   ).max(5),
 });
@@ -23,6 +43,7 @@ export async function runTargetMarkets(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<TargetMarketsOutput> {
+  // TARGET_MARKETS runs after INDUSTRY_PRIORITY and ICP
   const context = buildStepContext(ctx);
   let prompt = buildTargetMarketsPrompt(context);
   if (ctx.editPrompt) {
