@@ -132,7 +132,7 @@ export interface SegmentationOutput {
 export interface MarketSizeResult {
   segmentId: string;
   segmentName: string;
-  database: "apollo" | "clay" | "ai-estimated";
+  database: "apollo" | "clay";
   // Company level
   tam_companies: number;
   sam_companies: number;
