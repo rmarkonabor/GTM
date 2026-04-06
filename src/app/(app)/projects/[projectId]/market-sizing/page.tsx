@@ -3,7 +3,7 @@
 import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Building2, Users, Sparkles, AlertTriangle } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 
 interface MarketSizeResult {
   segmentName: string;
@@ -31,35 +31,17 @@ function fmt(n: number): string {
 
 const COLORS = ["#7c3aed", "#a855f7", "#c084fc"];
 
-function SourceBadge({ source }: { source: string }) {
-  if (source === "ai-estimated") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
-        <Sparkles className="h-2.5 w-2.5" /> AI Estimate
-      </span>
-    );
-  }
-  return (
-    <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded capitalize">
-      {source}
-    </span>
-  );
-}
-
 export default function MarketSizingPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Market Sizing</h1>
-      <p className="text-slate-500 text-sm mb-6">
-        Account counts from Apollo.io, or AI-estimated when no database key is configured.
-      </p>
+      <p className="text-slate-500 text-sm mb-6">Real account counts from Apollo.io. Not AI estimates.</p>
 
       <StepPageWrapper projectId={projectId} stepName="MARKET_SIZING" stepLabel="Market Sizing">
         {(output) => {
           const data = output as MarketSizingOutput;
-          const isAiEstimated = data.results.some((r) => r.database === "ai-estimated");
           const totalChartData = [
             { name: "TAM", value: data.totalTAM_companies },
             { name: "SAM", value: data.totalSAM_companies },
@@ -68,20 +50,6 @@ export default function MarketSizingPage({ params }: { params: Promise<{ project
 
           return (
             <div className="space-y-6">
-              {/* AI estimate disclaimer */}
-              {isAiEstimated && (
-                <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                  <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-300">AI-estimated figures</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      No Apollo API key detected. These numbers are AI estimates based on your ICP and segment data — not live database counts.
-                      Add an Apollo key in Settings for real account data.
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* Total summary */}
               <div className="grid grid-cols-3 gap-4">
                 {[
@@ -120,7 +88,7 @@ export default function MarketSizingPage({ params }: { params: Promise<{ project
                   <div key={r.segmentName} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-slate-900 dark:text-white">{r.segmentName}</h3>
-                      <SourceBadge source={r.database} />
+                      <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded capitalize">{r.database}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
