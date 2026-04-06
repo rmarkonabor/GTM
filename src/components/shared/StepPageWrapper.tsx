@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, CheckCircle2, Sparkles, Clock, ChevronDown, ChevronUp, Cpu } from "lucide-react";
+import { Loader2, CheckCircle2, Sparkles, Clock, ChevronDown, ChevronUp, Cpu, Pencil, PencilOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorDisplay } from "./ErrorDisplay";
@@ -31,7 +31,7 @@ interface Props {
   projectId: string;
   stepName: string;
   stepLabel: string;
-  children: (output: unknown, refresh: () => Promise<void>) => React.ReactNode;
+  children: (output: unknown, refresh: () => Promise<void>, editMode: boolean, save: (newOutput: object) => Promise<void>) => React.ReactNode;
   onApproved?: () => void;
 }
 
@@ -43,6 +43,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   const [editPrompt, setEditPrompt] = useState("");
   const [editRunning, setEditRunning] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const fetchStep = useCallback(async () => {
     // cache: 'no-store' prevents browser caching stale status after approval
@@ -120,6 +121,31 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
     }
   };
 
+  const handleSave = useCallback(async (newOutput: object) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/patch`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output: newOutput }),
+      });
+      if (!res.ok) throw new Error("Failed to save changes");
+      setStep((prev) => {
+        if (!prev) return prev;
+        return prev.status === "AWAITING_APPROVAL"
+          ? { ...prev, draftOutput: newOutput }
+          : { ...prev, output: newOutput };
+      });
+    } catch (err) {
+      toast.error("Could not save: " + (err as Error).message);
+      await refresh();
+    }
+  }, [projectId, stepName, refresh]);
+
+  // Reset edit mode when AI re-runs the step
+  useEffect(() => {
+    setEditMode(false);
+  }, [step?.status]);
+
   const handleVersionRestored = async () => {
     await refresh();
   };
@@ -154,7 +180,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   return (
     <div className="space-y-4">
       {/* Main output */}
-      {children(displayOutput, refresh)}
+      {children(displayOutput, refresh, editMode, handleSave)}
 
       {/* Approval / Edit panel */}
       <div className={`rounded-xl border p-5 space-y-4 ${isAwaiting ? "border-violet-500/30 bg-violet-500/5" : "border-white/10 bg-slate-900"}`}>
@@ -207,6 +233,14 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
               {approving ? "Approving..." : "Approve & Continue"}
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={() => setEditMode(!editMode)}
+            className={`gap-2 ${editMode ? "border-amber-500/30 text-amber-300 hover:text-amber-200" : "border-white/20 text-slate-300 hover:text-white"}`}
+          >
+            {editMode ? <PencilOff className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+            {editMode ? "Done Editing" : "Edit Manually"}
+          </Button>
           <Button
             variant="outline"
             onClick={() => setEditOpen(!editOpen)}

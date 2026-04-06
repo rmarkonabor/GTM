@@ -2,8 +2,9 @@
 
 import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
+import { EditableText, EditableChips, EditableList } from "@/components/shared/inline-edit";
 import { Badge } from "@/components/ui/badge";
-import { Building2, User, MapPin, Cpu, DollarSign, Target, Tag } from "lucide-react";
+import { Building2, User, MapPin, Cpu, DollarSign, Target, Tag, Trash2 } from "lucide-react";
 
 interface Firmographics {
   companySize: string[];
@@ -44,29 +45,77 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
       </p>
 
       <StepPageWrapper projectId={projectId} stepName="ICP" stepLabel="ICP">
-        {(output) => {
+        {(output, _refresh, editMode, save) => {
           const { icps } = output as { icps: ICPDefinition[] };
+
+          const updateIcp = (idx: number, updates: Partial<ICPDefinition>) =>
+            save({ icps: icps.map((icp, i) => i === idx ? { ...icp, ...updates } : icp) });
+
+          const removeIcp = (idx: number) =>
+            save({ icps: icps.filter((_, i) => i !== idx) });
+
+          const updatePersona = (icpIdx: number, pIdx: number, updates: Partial<BuyerPersona>) =>
+            save({
+              icps: icps.map((icp, i) =>
+                i === icpIdx
+                  ? { ...icp, buyerPersonas: icp.buyerPersonas.map((p, j) => j === pIdx ? { ...p, ...updates } : p) }
+                  : icp
+              ),
+            });
+
+          const removePersona = (icpIdx: number, pIdx: number) =>
+            save({
+              icps: icps.map((icp, i) =>
+                i === icpIdx
+                  ? { ...icp, buyerPersonas: icp.buyerPersonas.filter((_, j) => j !== pIdx) }
+                  : icp
+              ),
+            });
+
+          const updateFirmo = (icpIdx: number, field: keyof Firmographics, value: string[]) =>
+            updateIcp(icpIdx, { firmographics: { ...icps[icpIdx].firmographics, [field]: value } });
+
           return (
             <div className="space-y-8">
               {icps.map((icp, idx) => (
                 <div key={idx}>
                   {/* Industry header */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <Building2 className="h-5 w-5 text-violet-400 mt-0.5 shrink-0" />
-                    <div>
-                      <h2 className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{icp.niche}</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">{icp.standardIndustry}</p>
-                      {icp.keywords?.length > 0 && (
-                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                          <Tag className="h-3 w-3 text-slate-500 shrink-0" />
-                          {icp.keywords.map((kw) => (
-                            <span key={kw} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs">
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Building2 className="h-5 w-5 text-violet-400 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <EditableText
+                          value={icp.niche}
+                          editMode={editMode}
+                          onSave={(v) => updateIcp(idx, { niche: v })}
+                          className="font-bold text-slate-900 dark:text-white text-lg leading-tight"
+                        />
+                        <EditableText
+                          value={icp.standardIndustry}
+                          editMode={editMode}
+                          onSave={(v) => updateIcp(idx, { standardIndustry: v })}
+                          className="text-xs text-slate-400 mt-0.5"
+                        />
+                        {(icp.keywords?.length > 0 || editMode) && (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                            <Tag className="h-3 w-3 text-slate-500 shrink-0" />
+                            <EditableChips
+                              items={icp.keywords ?? []}
+                              onSave={(v) => updateIcp(idx, { keywords: v })}
+                              editMode={editMode}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {editMode && (
+                      <button
+                        onClick={() => removeIcp(idx)}
+                        className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Firmographics */}
@@ -76,12 +125,33 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                       Firmographics
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      <ChipGroup icon={Building2} label="Company Size" items={icp.firmographics.companySize} />
-                      <ChipGroup icon={DollarSign} label="Revenue" items={icp.firmographics.revenue} />
-                      <ChipGroup icon={MapPin} label="Geographies" items={icp.firmographics.geographies} />
-                      <ChipGroup icon={Building2} label="Industries (DB)" items={icp.firmographics.industries} highlight />
-                      <ChipGroup icon={Cpu} label="Technologies" items={icp.firmographics.technologies} />
-                      <ChipGroup icon={Target} label="Business Models" items={icp.firmographics.businessModels} />
+                      {(
+                        [
+                          { icon: Building2, label: "Company Size", field: "companySize" as const, highlight: false },
+                          { icon: DollarSign, label: "Revenue", field: "revenue" as const, highlight: false },
+                          { icon: MapPin, label: "Geographies", field: "geographies" as const, highlight: false },
+                          { icon: Building2, label: "Industries (DB)", field: "industries" as const, highlight: true },
+                          { icon: Cpu, label: "Technologies", field: "technologies" as const, highlight: false },
+                          { icon: Target, label: "Business Models", field: "businessModels" as const, highlight: false },
+                        ]
+                      ).map(({ icon: Icon, label, field, highlight }) => (
+                        <div key={field}>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Icon className="h-3 w-3 text-slate-400" />
+                            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</span>
+                          </div>
+                          <EditableChips
+                            items={icp.firmographics[field] ?? []}
+                            onSave={(v) => updateFirmo(idx, field, v)}
+                            editMode={editMode}
+                            chipClass={
+                              highlight
+                                ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            }
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -92,22 +162,67 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                         key={pi}
                         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5"
                       >
-                        <div className="flex items-center gap-2 mb-4">
-                          <User className="h-4 w-4 text-violet-400" />
-                          <h4 className="font-semibold text-slate-900 dark:text-white">{persona.title}</h4>
-                          <div className="flex gap-1 ml-2 flex-wrap">
-                            {persona.seniorities.map((s) => (
-                              <Badge key={s} className="bg-violet-500/10 text-violet-400 text-xs capitalize">{s}</Badge>
-                            ))}
-                            {persona.departments.map((d) => (
-                              <Badge key={d} className="bg-slate-500/10 text-slate-400 text-xs">{d}</Badge>
-                            ))}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2 flex-wrap flex-1">
+                            <User className="h-4 w-4 text-violet-400 shrink-0" />
+                            <EditableText
+                              value={persona.title}
+                              editMode={editMode}
+                              onSave={(v) => updatePersona(idx, pi, { title: v })}
+                              className="font-semibold text-slate-900 dark:text-white"
+                            />
+                            <div className="flex gap-1 flex-wrap">
+                              <EditableChips
+                                items={persona.seniorities ?? []}
+                                onSave={(v) => updatePersona(idx, pi, { seniorities: v })}
+                                editMode={editMode}
+                                chipClass="bg-violet-500/10 text-violet-400"
+                              />
+                              <EditableChips
+                                items={persona.departments ?? []}
+                                onSave={(v) => updatePersona(idx, pi, { departments: v })}
+                                editMode={editMode}
+                                chipClass="bg-slate-500/10 text-slate-400"
+                              />
+                            </div>
                           </div>
+                          {editMode && (
+                            <button
+                              onClick={() => removePersona(idx, pi)}
+                              className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 ml-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <BulletList title="Goals" items={persona.goals} color="green" />
-                          <BulletList title="Challenges" items={persona.challenges} color="red" />
-                          <BulletList title="Trigger Events" items={persona.triggerEvents} color="blue" />
+                          <div>
+                            <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Goals</h5>
+                            <EditableList
+                              items={persona.goals ?? []}
+                              onSave={(v) => updatePersona(idx, pi, { goals: v })}
+                              editMode={editMode}
+                              dotColor="bg-green-400"
+                            />
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Challenges</h5>
+                            <EditableList
+                              items={persona.challenges ?? []}
+                              onSave={(v) => updatePersona(idx, pi, { challenges: v })}
+                              editMode={editMode}
+                              dotColor="bg-red-400"
+                            />
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trigger Events</h5>
+                            <EditableList
+                              items={persona.triggerEvents ?? []}
+                              onSave={(v) => updatePersona(idx, pi, { triggerEvents: v })}
+                              editMode={editMode}
+                              dotColor="bg-blue-400"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -118,52 +233,6 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
           );
         }}
       </StepPageWrapper>
-    </div>
-  );
-}
-
-function ChipGroup({ icon: Icon, label, items, highlight }: { icon: React.ElementType; label: string; items: string[]; highlight?: boolean }) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-2">
-        <Icon className="h-3 w-3 text-slate-400" />
-        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {items.map((item) => (
-          <span
-            key={item}
-            className={`px-2 py-0.5 rounded text-xs ${
-              highlight
-                ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-            }`}
-          >
-            {item}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-const COLOR_BG: Record<string, string> = {
-  green: "bg-green-400", red: "bg-red-400", blue: "bg-blue-400",
-  yellow: "bg-yellow-400", violet: "bg-violet-400",
-};
-
-function BulletList({ title, items, color }: { title: string; items: string[]; color: string }) {
-  return (
-    <div>
-      <h5 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{title}</h5>
-      <ul className="space-y-1.5">
-        {items.map((item, i) => (
-          <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-1.5">
-            <span className={`h-1 w-1 rounded-full ${COLOR_BG[color] ?? "bg-slate-400"} mt-1.5 shrink-0`} />
-            {item}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

@@ -20,9 +20,9 @@ function buildApolloFilters(
 ): Record<string, unknown> {
   const filters: Record<string, unknown> = {};
 
-  if (firmographics.industries?.length) {
-    filters.organization_industry_tag_ids = firmographics.industries;
-  }
+  // Note: organization_industry_tag_ids requires numeric Apollo tag IDs.
+  // We omit industry filtering here to avoid sending invalid string values.
+  // Company size, geography, and technology filters provide sufficient scoping.
 
   if (firmographics.companySize?.length) {
     // Apollo uses "min,max" format, e.g. "11,50"
