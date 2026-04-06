@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  Search, Target, Building2, Users, BarChart3,
+  Search, Target, Building2, Users, BarChart3, LayoutDashboard,
   Swords, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
   ChevronLeft, Clock
 } from "lucide-react";
@@ -57,6 +57,24 @@ export function ProjectStepNav({ project }: { project: Project }) {
 
       {/* Steps */}
       <nav className="flex-1 p-3 space-y-0.5">
+        {/* Dashboard link */}
+        {(() => {
+          const href = `/projects/${project.id}/dashboard`;
+          const isActive = pathname === href;
+          return (
+            <Link href={href}>
+              <div className={cn(
+                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors mb-2 pb-2 border-b border-white/5",
+                isActive
+                  ? "bg-violet-600/20 text-violet-300"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              )}>
+                <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">Dashboard</span>
+              </div>
+            </Link>
+          );
+        })()}
         {STEPS.map((step) => {
           const status = stepMap[step.key] ?? "PENDING";
           const href = `/projects/${project.id}/${step.path}`;

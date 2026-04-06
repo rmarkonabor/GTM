@@ -112,8 +112,14 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         return;
       }
 
-      // If workflow is in progress or complete, go to most recent completed step
-      if (p.status === "IN_PROGRESS" || p.status === "COMPLETE") {
+      // If workflow is complete, go to dashboard
+      if (p.status === "COMPLETE") {
+        router.replace(`/projects/${projectId}/dashboard`);
+        return;
+      }
+
+      // If workflow is in progress, go to most recent completed step
+      if (p.status === "IN_PROGRESS") {
         const lastComplete = [...p.steps].reverse().find((s) => s.status === "COMPLETE");
         router.replace(`/projects/${projectId}/${STEP_PATHS[lastComplete?.stepName ?? "RESEARCH"]}`);
         return;
