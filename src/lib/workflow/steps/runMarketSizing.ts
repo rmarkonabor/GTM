@@ -1,11 +1,11 @@
-import { WorkflowContext, MarketSizingOutput, MarketSizeResult } from "@/types/gtm";
+import { WorkflowContext, MarketSizingOutput, MarketSizeResult, WorkflowStepResult } from "@/types/gtm";
 import { getMarketSize } from "@/lib/integrations/apollo";
 
 export async function runMarketSizing(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string },
   dbPrefs: { apollo?: { apiKey: string }; clay?: { apiKey: string } }
-): Promise<MarketSizingOutput> {
+): Promise<WorkflowStepResult<MarketSizingOutput>> {
   const segments = ctx.steps.SEGMENTATION?.segments ?? [];
   const icps = ctx.steps.ICP?.icps ?? [];
   const results: MarketSizeResult[] = [];
@@ -14,7 +14,8 @@ export async function runMarketSizing(
     // Find matching ICP for this segment's industry
     const matchingIcp = icps.find((icp) =>
       segment.industries.some((ind) =>
-        icp.industryName.toLowerCase().includes(ind.toLowerCase())
+        icp.standardIndustry.toLowerCase().includes(ind.toLowerCase()) ||
+        icp.niche.toLowerCase().includes(ind.toLowerCase())
       )
     ) ?? icps[0];
 
@@ -31,9 +32,6 @@ export async function runMarketSizing(
           persona
         );
 
-        // TAM = all matching companies (broad filter)
-        // SAM = filtered by geo + size (serviceable)
-        // SOM = 10-15% of SAM (realistic capture)
         const sam_companies = Math.round(companies * 0.4);
         const som_companies = Math.round(sam_companies * 0.12);
         const sam_contacts = Math.round(contacts * 0.4);
@@ -52,8 +50,7 @@ export async function runMarketSizing(
           filtersUsed,
           fetchedAt: new Date().toISOString(),
         });
-      } catch (err) {
-        // Log but don't fail the whole step — add partial result
+      } catch {
         results.push({
           segmentId: segment.id,
           segmentName: segment.name,
@@ -75,10 +72,16 @@ export async function runMarketSizing(
   const totalSAM = results.reduce((sum, r) => sum + r.sam_companies, 0);
   const totalSOM = results.reduce((sum, r) => sum + r.som_companies, 0);
 
-  return {
+  const output: MarketSizingOutput = {
     results,
     totalTAM_companies: totalTAM,
     totalSAM_companies: totalSAM,
     totalSOM_companies: totalSOM,
+  };
+
+  return {
+    output,
+    // Market sizing uses Apollo API, not LLM — no token cost
+    usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, estimatedCostUSD: 0, model: "apollo-api" },
   };
 }

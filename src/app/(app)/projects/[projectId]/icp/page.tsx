@@ -1,8 +1,9 @@
 "use client";
+
 import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Badge } from "@/components/ui/badge";
-import { Building2, User, MapPin, Cpu, DollarSign, Target } from "lucide-react";
+import { Building2, User, MapPin, Cpu, DollarSign, Target, Tag } from "lucide-react";
 
 interface Firmographics {
   companySize: string[];
@@ -23,7 +24,9 @@ interface BuyerPersona {
 }
 
 interface ICPDefinition {
-  industryName: string;
+  standardIndustry: string;
+  niche: string;
+  keywords: string[];
   firmographics: Firmographics;
   buyerPersonas: BuyerPersona[];
 }
@@ -37,7 +40,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
         Ideal Customer Profile (ICP)
       </h1>
       <p className="text-slate-500 text-sm mb-6">
-        Firmographics and buyer personas per industry — ready for Apollo/ZoomInfo filtering.
+        Market-specific ICPs with Apollo/ZoomInfo-compatible firmographics and buyer personas.
       </p>
 
       <StepPageWrapper projectId={projectId} stepName="ICP" stepLabel="ICP">
@@ -45,11 +48,25 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
           const { icps } = output as { icps: ICPDefinition[] };
           return (
             <div className="space-y-8">
-              {icps.map((icp) => (
-                <div key={icp.industryName}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Building2 className="h-4 w-4 text-violet-400" />
-                    <h2 className="font-bold text-slate-900 dark:text-white text-lg">{icp.industryName}</h2>
+              {icps.map((icp, idx) => (
+                <div key={idx}>
+                  {/* Industry header */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <Building2 className="h-5 w-5 text-violet-400 mt-0.5 shrink-0" />
+                    <div>
+                      <h2 className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{icp.niche}</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">{icp.standardIndustry}</p>
+                      {icp.keywords?.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                          <Tag className="h-3 w-3 text-slate-500 shrink-0" />
+                          {icp.keywords.map((kw) => (
+                            <span key={kw} className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-xs">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Firmographics */}
@@ -62,7 +79,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                       <ChipGroup icon={Building2} label="Company Size" items={icp.firmographics.companySize} />
                       <ChipGroup icon={DollarSign} label="Revenue" items={icp.firmographics.revenue} />
                       <ChipGroup icon={MapPin} label="Geographies" items={icp.firmographics.geographies} />
-                      <ChipGroup icon={Building2} label="Industries" items={icp.firmographics.industries} />
+                      <ChipGroup icon={Building2} label="Industries (DB)" items={icp.firmographics.industries} highlight />
                       <ChipGroup icon={Cpu} label="Technologies" items={icp.firmographics.technologies} />
                       <ChipGroup icon={Target} label="Business Models" items={icp.firmographics.businessModels} />
                     </div>
@@ -70,17 +87,20 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
 
                   {/* Buyer Personas */}
                   <div className="space-y-3">
-                    {icp.buyerPersonas.map((persona) => (
+                    {icp.buyerPersonas.map((persona, pi) => (
                       <div
-                        key={persona.title}
+                        key={pi}
                         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5"
                       >
                         <div className="flex items-center gap-2 mb-4">
                           <User className="h-4 w-4 text-violet-400" />
                           <h4 className="font-semibold text-slate-900 dark:text-white">{persona.title}</h4>
-                          <div className="flex gap-1 ml-2">
+                          <div className="flex gap-1 ml-2 flex-wrap">
                             {persona.seniorities.map((s) => (
                               <Badge key={s} className="bg-violet-500/10 text-violet-400 text-xs capitalize">{s}</Badge>
+                            ))}
+                            {persona.departments.map((d) => (
+                              <Badge key={d} className="bg-slate-500/10 text-slate-400 text-xs">{d}</Badge>
                             ))}
                           </div>
                         </div>
@@ -102,7 +122,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
   );
 }
 
-function ChipGroup({ icon: Icon, label, items }: { icon: React.ElementType; label: string; items: string[] }) {
+function ChipGroup({ icon: Icon, label, items, highlight }: { icon: React.ElementType; label: string; items: string[]; highlight?: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-2">
@@ -111,7 +131,14 @@ function ChipGroup({ icon: Icon, label, items }: { icon: React.ElementType; labe
       </div>
       <div className="flex flex-wrap gap-1">
         {items.map((item) => (
-          <span key={item} className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded text-xs">
+          <span
+            key={item}
+            className={`px-2 py-0.5 rounded text-xs ${
+              highlight
+                ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+            }`}
+          >
             {item}
           </span>
         ))}
@@ -122,7 +149,7 @@ function ChipGroup({ icon: Icon, label, items }: { icon: React.ElementType; labe
 
 const COLOR_BG: Record<string, string> = {
   green: "bg-green-400", red: "bg-red-400", blue: "bg-blue-400",
-  yellow: "bg-yellow-400", violet: "bg-violet-400", purple: "bg-purple-400",
+  yellow: "bg-yellow-400", violet: "bg-violet-400",
 };
 
 function BulletList({ title, items, color }: { title: string; items: string[]; color: string }) {

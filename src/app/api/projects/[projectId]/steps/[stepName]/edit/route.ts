@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
-import { Prisma } from "@prisma/client";
 import { errorResponse } from "@/lib/errors/handlers";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference, DBPreferences } from "@/types/gtm";
@@ -16,7 +15,6 @@ import { runMarketSizing } from "@/lib/workflow/steps/runMarketSizing";
 import { runCompetitive } from "@/lib/workflow/steps/runCompetitive";
 import { runPositioning } from "@/lib/workflow/steps/runPositioning";
 import { runManifesto } from "@/lib/workflow/steps/runManifesto";
-import { runResearchEdit } from "@/lib/workflow/steps/runResearchEdit";
 import { z } from "zod";
 
 export const maxDuration = 120;
@@ -25,7 +23,6 @@ const schema = z.object({ prompt: z.string().min(1) });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = {
-  RESEARCH: runResearchEdit,
   TARGET_MARKETS: runTargetMarkets,
   INDUSTRY_PRIORITY: runIndustryPriority,
   ICP: runICP,
@@ -65,38 +62,33 @@ export async function POST(
     const stepFn = STEP_FN[stepName];
     if (!stepFn) return NextResponse.json({ error: { code: "INVALID_STEP", message: "Unknown step." } }, { status: 400 });
 
-    // Read existing step so we can restore its state if the LLM call fails
-    const existingStep = await prisma.projectStep.findUnique({
-      where: { projectId_stepName: { projectId, stepName: stepName as never } },
-    });
-    if (!existingStep) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Step not found or has not run yet." } }, { status: 404 });
-
     // Build context from DB
     const ctx = await buildContextFromDB(projectId);
     if (!ctx) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project context not found." } }, { status: 404 });
     ctx.editPrompt = prompt;
 
-    // Mark step as running, clearing any stale error/draft state
+    // Mark step as running
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
-      data: { status: "RUNNING", startedAt: new Date(), errorCode: null, errorMsg: null, draftOutput: Prisma.DbNull },
+      data: { status: "RUNNING", startedAt: new Date() },
     });
 
     let output: unknown;
+    let tokenUsage: unknown = null;
     try {
-      output = await stepFn(ctx, llmPreference, dbPreferences);
+      const result = await stepFn(ctx, llmPreference, dbPreferences);
+      // Step runners now return { output, usage } — handle both old and new shapes
+      if (result && typeof result === "object" && "output" in result && "usage" in result) {
+        output = result.output;
+        tokenUsage = result.usage;
+      } else {
+        output = result;
+      }
     } catch (err) {
-      // Restore original step state so the UI doesn't end up broken (e.g. COMPLETE step
-      // with no draftOutput showing as "pending" after a failed edit).
       await prisma.projectStep.update({
         where: { projectId_stepName: { projectId, stepName: stepName as never } },
-        data: {
-          status: existingStep.status,
-          draftOutput: existingStep.draftOutput ?? Prisma.DbNull,
-          errorCode: null,
-          errorMsg: null,
-        },
-      }).catch(() => {}); // best-effort; don't mask the original error
+        data: { status: "AWAITING_APPROVAL" },
+      });
       throw err;
     }
 
@@ -113,10 +105,14 @@ export async function POST(
       },
     });
 
-    // Update draftOutput, keep AWAITING_APPROVAL; clear any prior error fields
+    // Update draftOutput and token usage, keep AWAITING_APPROVAL
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
-      data: { status: "AWAITING_APPROVAL", draftOutput: output as object, errorCode: null, errorMsg: null },
+      data: {
+        status: "AWAITING_APPROVAL",
+        draftOutput: output as object,
+        ...(tokenUsage ? { tokenUsage: tokenUsage as object } : {}),
+      },
     });
 
     return NextResponse.json({ success: true, output });

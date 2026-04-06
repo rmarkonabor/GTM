@@ -1,37 +1,53 @@
 export function buildIndustryPriorityPrompt(context: string): string {
-  return `You are a senior GTM strategist. Based on the company profile and clarifying answers below, identify and rank the industries this company should prioritize targeting.
+  return `You are a senior GTM strategist. Analyze the company profile below and identify the 5–8 priority industries this company should target, ranked by fit.
 
 ${context}
 
-This is the FIRST strategic step — before identifying specific target markets. You are answering: which vertical industries are the best fit for this company's product or service?
+CRITICAL — You must separate three distinct things for each industry:
 
-For each industry:
-1. Why is this industry a strong fit for this company? (be specific to what they actually offer)
-2. What urgent pain points exist in this industry that the company directly addresses?
-3. What does the company specifically offer to solve those pain points?
-4. How would the company and buyers in this industry work together? (engagement model, sales motion)
-5. What is your honest assessment of estimated market fit?
+1. standardIndustry: The EXACT industry name used in LinkedIn and Apollo.io databases. Use these standard names only:
+   Examples: "Computer Software", "Information Technology and Services", "Financial Services",
+   "Banking", "Insurance", "Hospital & Health Care", "Medical Practice", "Legal Services",
+   "Law Practice", "Human Resources", "Staffing and Recruiting", "Marketing and Advertising",
+   "Management Consulting", "Accounting", "Real Estate", "Construction", "Manufacturing",
+   "Retail", "Wholesale", "Transportation/Trucking/Railroad", "Logistics and Supply Chain",
+   "Oil & Energy", "Utilities", "Education Management", "E-Learning", "Non-Profit Organization Management"
+   (Use the exact LinkedIn/Apollo spelling — this value will be used as a database filter)
 
-Return JSON:
+2. niche: The specific sub-segment or vertical within that standard industry.
+   Examples: "HR Tech", "Legal Tech", "Fintech for SMBs", "Healthcare SaaS", "Construction Tech"
+   (This is how you would describe the space in a pitch or outreach message)
+
+3. keywords: 3–6 specific terms, technologies, or processes that buyers in this niche use.
+   Examples: ["HRIS", "payroll", "workforce management"] or ["contract management", "e-discovery", "legal billing"]
+   (These are for keyword-based targeting and outreach personalization)
+
+For each industry also define:
+- Why this industry is a priority (pain points specific to this niche)
+- Exactly what the company offers to solve those pain points
+- How the company and buyers would work together (engagement model)
+- Estimated market fit: "high" | "medium" | "low"
+
+Return JSON only:
 {
   "industries": [
     {
-      "industryName": "Industry Name (e.g. FinTech, Healthcare IT, E-commerce Brands)",
+      "standardIndustry": "Computer Software",
+      "niche": "HR Tech",
+      "keywords": ["HRIS", "payroll", "workforce management", "employee onboarding"],
       "priorityRank": 1,
       "painPoints": ["specific pain point 1", "specific pain point 2"],
-      "whatClientOffers": ["specific offering mapped to this industry's pain", "another specific offering"],
-      "howTheyWorkTogether": "description of the engagement model and how sales/delivery works with buyers in this industry",
+      "whatClientOffers": ["specific offering 1", "specific offering 2"],
+      "howTheyWorkTogether": "description of engagement model",
       "estimatedMarketFit": "high"
     }
   ]
 }
 
 Rules:
-- Identify 5-8 industries, ranked by fit (rank 1 = best fit)
-- Base industries on the company's ACTUAL product and differentiation, not generic advice
-- "high" fit: company has a clear, differentiated solution for a real urgent problem in this industry
-- "medium" fit: company can serve this industry but faces more competition or lower urgency
-- "low" fit: possible but not the best use of GTM resources right now
-- Be SPECIFIC — "they need better data tools" is not acceptable; name the exact pain
+- 5–8 industries ranked by priority (1 = highest)
+- standardIndustry must be a real LinkedIn/Apollo database value — never a made-up category
+- niche should be a recognizable market term, not a generic description
+- Be specific — "they need better tools" is not an acceptable pain point
 - Return ONLY JSON, no markdown.`;
 }

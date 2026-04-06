@@ -1,0 +1,154 @@
+import { generateObject } from "ai";
+import { z } from "zod";
+import {
+  WorkflowContext,
+  IndustryDefinition,
+  TargetMarket,
+  LLMPreference,
+} from "@/types/gtm";
+import { getLanguageModel } from "@/lib/ai/providers";
+import { buildStepContext } from "../context-builder";
+
+// ─── Expand Industry Priority ─────────────────────────────────────────────────
+
+const industrySchema = z.object({
+  standardIndustry: z.string(),
+  niche: z.string(),
+  keywords: z.array(z.string()),
+  priorityRank: z.number(),
+  painPoints: z.array(z.string()),
+  whatClientOffers: z.array(z.string()),
+  howTheyWorkTogether: z.string(),
+  estimatedMarketFit: z.enum(["high", "medium", "low"]),
+});
+
+const expandIndustriesSchema = z.object({
+  industries: z.array(industrySchema),
+});
+
+export async function expandIndustries(
+  ctx: WorkflowContext,
+  newNiches: string[],
+  existingIndustries: IndustryDefinition[],
+  llm: LLMPreference
+): Promise<IndustryDefinition[]> {
+  const context = buildStepContext(ctx);
+  const nextRank = existingIndustries.length + 1;
+
+  const prompt = `You are a senior GTM strategist. We already have the following priority industries defined for this company:
+
+${context}
+
+Existing industries (for context/consistency):
+${JSON.stringify(existingIndustries.map((i) => ({ standardIndustry: i.standardIndustry, niche: i.niche })), null, 2)}
+
+Now generate full IndustryDefinition objects for each of these NEW industries/niches the user wants to add:
+${JSON.stringify(newNiches, null, 2)}
+
+For each new industry, follow the same quality and format as the existing ones.
+
+CRITICAL — Separate these three things:
+- standardIndustry: Exact LinkedIn/Apollo database name (e.g. "Computer Software", "Financial Services")
+- niche: Sub-segment description (e.g. "HR Tech", "Legal Tech")
+- keywords: 3–6 specific targeting terms
+
+Also include: painPoints, whatClientOffers, howTheyWorkTogether, estimatedMarketFit.
+Start priorityRank from ${nextRank}.
+
+Return JSON:
+{ "industries": [ { "standardIndustry": "...", "niche": "...", "keywords": [...], "priorityRank": ${nextRank}, "painPoints": [...], "whatClientOffers": [...], "howTheyWorkTogether": "...", "estimatedMarketFit": "high" | "medium" | "low" } ] }
+
+Return ONLY JSON, no markdown.`;
+
+  const model = getLanguageModel(llm.provider, llm.apiKey, "expand-step");
+  const { object } = await generateObject({ model, schema: expandIndustriesSchema, prompt });
+  return object.industries as IndustryDefinition[];
+}
+
+// ─── Expand Target Markets ────────────────────────────────────────────────────
+
+const firmographicsSchema = z.object({
+  companySize: z.array(z.string()),
+  revenue: z.array(z.string()),
+  geographies: z.array(z.string()),
+  industries: z.array(z.string()),
+  technologies: z.array(z.string()),
+  businessModels: z.array(z.string()),
+});
+
+const buyerPersonaSchema = z.object({
+  title: z.string(),
+  seniorities: z.array(z.string()),
+  departments: z.array(z.string()),
+  goals: z.array(z.string()),
+  challenges: z.array(z.string()),
+  triggerEvents: z.array(z.string()),
+});
+
+const expandMarketsSchema = z.object({
+  markets: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      urgentProblems: z.array(z.string()),
+      importantProblems: z.array(z.string()),
+      macroTrends: z.array(z.string()),
+      whyRightMarket: z.string(),
+      priorityScore: z.number(),
+      firmographics: firmographicsSchema,
+      buyerPersonas: z.array(buyerPersonaSchema),
+    })
+  ),
+});
+
+export async function expandMarkets(
+  ctx: WorkflowContext,
+  newMarketNames: string[],
+  existingMarkets: TargetMarket[],
+  llm: LLMPreference
+): Promise<TargetMarket[]> {
+  const context = buildStepContext(ctx);
+  const nextIndex = existingMarkets.length + 1;
+
+  const prompt = `You are a senior GTM strategist. We already have the following target markets defined for this company:
+
+${context}
+
+Existing markets (for context/consistency):
+${JSON.stringify(existingMarkets.map((m) => ({ id: m.id, name: m.name, priorityScore: m.priorityScore })), null, 2)}
+
+Now generate full TargetMarket objects for each of these NEW markets the user wants to add:
+${JSON.stringify(newMarketNames, null, 2)}
+
+For each new market, follow the same quality and format as the existing ones.
+Each market must include market-specific firmographics and buyer personas.
+
+IDs should follow the pattern "market_${nextIndex}", "market_${nextIndex + 1}", etc.
+
+Return JSON:
+{
+  "markets": [
+    {
+      "id": "market_${nextIndex}",
+      "name": "specific market name",
+      "urgentProblems": [...],
+      "importantProblems": [...],
+      "macroTrends": [...],
+      "whyRightMarket": "...",
+      "priorityScore": 7,
+      "firmographics": { "companySize": [...], "revenue": [...], "geographies": [...], "industries": [...], "technologies": [...], "businessModels": [...] },
+      "buyerPersonas": [{ "title": "...", "seniorities": [...], "departments": [...], "goals": [...], "challenges": [...], "triggerEvents": [...] }]
+    }
+  ]
+}
+
+Rules:
+- companySize: Apollo ranges "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
+- seniorities: "owner" | "founder" | "c_suite" | "partner" | "vp" | "head" | "director" | "manager" | "senior" | "entry"
+- industries in firmographics: LinkedIn/Apollo standard names only
+- Return ONLY JSON, no markdown.`;
+
+  const model = getLanguageModel(llm.provider, llm.apiKey, "expand-step");
+  const { object } = await generateObject({ model, schema: expandMarketsSchema, prompt });
+  return object.markets as TargetMarket[];
+}

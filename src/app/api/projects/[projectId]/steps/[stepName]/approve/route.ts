@@ -37,36 +37,13 @@ export async function POST(
       },
     });
 
-    // RESEARCH step: start workflow (or keep CLARIFYING) instead of sending Inngest event
-    if (stepName === "RESEARCH") {
-      const draftData = step.draftOutput as { companyProfile?: unknown; questionsNeeded?: unknown[] } | null;
-      const questions = draftData?.questionsNeeded ?? [];
-      const hasClarifying = Array.isArray(questions) && questions.length > 0;
-
-      if (hasClarifying) {
-        // Update project to CLARIFYING so the project overview shows the Q&A form
-        await prisma.project.update({
-          where: { id: projectId },
-          data: { status: "CLARIFYING" },
-        });
-        return NextResponse.json({ success: true, next: "clarifying" });
-      } else {
-        // No questions — start workflow immediately
-        await prisma.project.update({ where: { id: projectId }, data: { status: "IN_PROGRESS" } });
-        await inngest.send({ name: "gtm/workflow.start", data: { projectId } });
-        return NextResponse.json({ success: true, next: "workflow" });
-      }
-    }
-
-    // All other steps: trigger next step in workflow using the same event
-    // as workflow.start — avoids depending on gtm/step.approved being
-    // registered as a function trigger (requires an Inngest re-sync after deploy).
+    // Trigger workflow to run the next step
     await inngest.send({
       name: "gtm/workflow.start",
       data: { projectId },
     });
 
-    return NextResponse.json({ success: true, next: "workflow" });
+    return NextResponse.json({ success: true });
   } catch (err) {
     return errorResponse(err);
   }

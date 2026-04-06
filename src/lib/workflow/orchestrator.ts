@@ -4,15 +4,18 @@ import { Prisma, StepName } from "@prisma/client";
 import { getErrorDetails } from "@/lib/errors/types";
 import { WorkflowContext, LLMPreference, DBPreferences } from "@/types/gtm";
 import { safeDecrypt } from "@/lib/crypto";
-import { runTargetMarkets } from "./steps/runTargetMarkets";
 import { runIndustryPriority } from "./steps/runIndustryPriority";
 import { runICP } from "./steps/runICP";
+import { runTargetMarkets } from "./steps/runTargetMarkets";
+import { runCompetitive } from "./steps/runCompetitive";
 import { runSegmentation } from "./steps/runSegmentation";
 import { runMarketSizing } from "./steps/runMarketSizing";
-import { runCompetitive } from "./steps/runCompetitive";
 import { runPositioning } from "./steps/runPositioning";
 import { runManifesto } from "./steps/runManifesto";
 
+// Canonical order — must match the restore route and nav
+// INDUSTRY_PRIORITY → TARGET_MARKETS → ICP → COMPETITIVE → SEGMENTATION → MARKET_SIZING → POSITIONING → MANIFESTO
+// ICP comes after TARGET_MARKETS so it can create market-specific profiles
 const STEP_ORDER: StepName[] = [
   "INDUSTRY_PRIORITY",
   "TARGET_MARKETS",
@@ -125,31 +128,41 @@ export const gtmWorkflow = inngest.createFunction(
 
       try {
         let output: unknown;
+        let tokenUsage: unknown = null;
+
         switch (nextStepName) {
-          case "TARGET_MARKETS":
-            output = await runTargetMarkets(ctx, llmPreference);
-            break;
-          case "INDUSTRY_PRIORITY":
-            output = await runIndustryPriority(ctx, llmPreference);
-            break;
-          case "ICP":
-            output = await runICP(ctx, llmPreference);
-            break;
-          case "SEGMENTATION":
-            output = await runSegmentation(ctx, llmPreference);
-            break;
-          case "MARKET_SIZING":
-            output = await runMarketSizing(ctx, llmPreference, dbPreferences);
-            break;
-          case "COMPETITIVE":
-            output = await runCompetitive(ctx, llmPreference);
-            break;
-          case "POSITIONING":
-            output = await runPositioning(ctx, llmPreference);
-            break;
-          case "MANIFESTO":
-            output = await runManifesto(ctx, llmPreference);
-            break;
+          case "INDUSTRY_PRIORITY": {
+            const r = await runIndustryPriority(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "ICP": {
+            const r = await runICP(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "TARGET_MARKETS": {
+            const r = await runTargetMarkets(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "COMPETITIVE": {
+            const r = await runCompetitive(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "SEGMENTATION": {
+            const r = await runSegmentation(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "MARKET_SIZING": {
+            const r = await runMarketSizing(ctx, llmPreference, dbPreferences);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "POSITIONING": {
+            const r = await runPositioning(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
+          case "MANIFESTO": {
+            const r = await runManifesto(ctx, llmPreference);
+            output = r.output; tokenUsage = r.usage; break;
+          }
           default:
             throw new Error(`Unknown step: ${nextStepName}`);
         }
@@ -170,7 +183,11 @@ export const gtmWorkflow = inngest.createFunction(
 
         await prisma.projectStep.update({
           where: { projectId_stepName: { projectId, stepName: nextStepName } },
-          data: { status: "AWAITING_APPROVAL", draftOutput: output as object },
+          data: {
+            status: "AWAITING_APPROVAL",
+            draftOutput: output as object,
+            tokenUsage: tokenUsage as object ?? Prisma.DbNull,
+          },
         });
       } catch (err) {
         const { code, message } = getErrorDetails(err);

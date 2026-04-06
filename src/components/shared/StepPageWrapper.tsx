@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, CheckCircle2, Sparkles, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, CheckCircle2, Sparkles, Clock, ChevronDown, ChevronUp, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { StepRunning, StepPending } from "./StepStatus";
 import { VersionHistory } from "./VersionHistory";
 import { toast } from "sonner";
+import { formatCost, formatTokens } from "@/lib/ai/pricing";
+
+interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUSD: number;
+  model: string;
+}
 
 interface StepData {
   status: string;
@@ -15,13 +24,14 @@ interface StepData {
   draftOutput: unknown;
   errorCode?: string;
   errorMsg?: string;
+  tokenUsage?: TokenUsage | null;
 }
 
 interface Props {
   projectId: string;
   stepName: string;
   stepLabel: string;
-  children: (output: unknown) => React.ReactNode;
+  children: (output: unknown, refresh: () => Promise<void>) => React.ReactNode;
   onApproved?: () => void;
 }
 
@@ -35,7 +45,8 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
 
   const fetchStep = useCallback(async () => {
-    const res = await fetch(`/api/projects/${projectId}`);
+    // cache: 'no-store' prevents browser caching stale status after approval
+    const res = await fetch(`/api/projects/${projectId}`, { cache: "no-store" });
     const data = await res.json();
     const found = data.project?.steps?.find((s: { stepName: string }) => s.stepName === stepName);
     return found ?? null;
@@ -68,10 +79,20 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to approve");
       toast.success("Step approved! Next step will start shortly.");
-      await refresh();
-      onApproved?.();
+      // Optimistically flip to COMPLETE immediately — don't re-fetch because the
+      // approve DB write may not be visible yet on the next read connection.
+      setStep((prev) =>
+        prev ? { ...prev, status: "COMPLETE", output: prev.draftOutput } : prev
+      );
+      if (onApproved) {
+        // Brief pause so user sees the green "Approved" state before navigating
+        await new Promise((r) => setTimeout(r, 1200));
+        onApproved();
+      }
     } catch (err) {
       toast.error((err as Error).message);
+      // Re-fetch on error to sync actual state
+      await refresh();
     } finally {
       setApproving(false);
     }
@@ -127,11 +148,13 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   if (!displayOutput) return <StepPending stepLabel={stepLabel} />;
 
   const isAwaiting = step.status === "AWAITING_APPROVAL";
+  const usage = step.tokenUsage;
+  const hasUsage = usage && (usage.totalTokens > 0 || usage.model !== "apollo-api");
 
   return (
     <div className="space-y-4">
       {/* Main output */}
-      {children(displayOutput)}
+      {children(displayOutput, refresh)}
 
       {/* Approval / Edit panel */}
       <div className={`rounded-xl border p-5 space-y-4 ${isAwaiting ? "border-violet-500/30 bg-violet-500/5" : "border-white/10 bg-slate-900"}`}>
@@ -148,6 +171,19 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
                 <CheckCircle2 className="h-4 w-4 text-green-400" />
                 <span className="text-sm font-medium text-green-300">Approved</span>
               </>
+            )}
+
+            {/* Token usage + cost */}
+            {hasUsage && (
+              <div className="flex items-center gap-1.5 ml-3 text-xs text-slate-500">
+                <Cpu className="h-3 w-3 shrink-0" />
+                <span>{formatTokens(usage.promptTokens)} in / {formatTokens(usage.completionTokens)} out</span>
+                <span className="text-slate-600">·</span>
+                <span className={usage.estimatedCostUSD > 0 ? "text-slate-400" : "text-slate-600"}>
+                  {usage.estimatedCostUSD > 0 ? formatCost(usage.estimatedCostUSD) : "free"}
+                </span>
+                <span className="text-slate-700">{usage.model}</span>
+              </div>
             )}
           </div>
           <button

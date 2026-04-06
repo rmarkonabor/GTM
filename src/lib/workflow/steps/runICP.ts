@@ -1,7 +1,9 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { WorkflowContext, ICPOutput } from "@/types/gtm";
+import { WorkflowContext, ICPOutput, WorkflowStepResult } from "@/types/gtm";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { buildStepContext } from "../context-builder";
 import { buildICPPrompt } from "@/lib/ai/prompts/icp";
 
@@ -17,7 +19,9 @@ const firmographicsSchema = z.object({
 const schema = z.object({
   icps: z.array(
     z.object({
-      industryName: z.string(),
+      standardIndustry: z.string(),
+      niche: z.string(),
+      keywords: z.array(z.string()),
       firmographics: firmographicsSchema,
       buyerPersonas: z.array(
         z.object({
@@ -36,15 +40,26 @@ const schema = z.object({
 export async function runICP(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
-): Promise<ICPOutput> {
-  const context = buildStepContext(ctx, ["TARGET_MARKETS", "INDUSTRY_PRIORITY"]);
+): Promise<WorkflowStepResult<ICPOutput>> {
+  const context = buildStepContext(ctx);
+  // ICP runs after TARGET_MARKETS — creates market-specific ICPs grounded in target markets + industry priorities
   const industries = ctx.steps.INDUSTRY_PRIORITY?.industries ?? [];
   let prompt = buildICPPrompt(context, industries);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
   }
+  const modelId = getModelForTask(llm.provider as "openai" | "anthropic" | "google", "icp-creation");
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "icp-creation");
 
-  const { object } = await generateObject({ model, schema, prompt });
-  return object as ICPOutput;
+  const { object, usage } = await generateObject({ model, schema, prompt });
+  return {
+    output: object as ICPOutput,
+    usage: {
+      promptTokens: usage.inputTokens ?? 0,
+      completionTokens: usage.outputTokens ?? 0,
+      totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      estimatedCostUSD: calculateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
+      model: modelId,
+    },
+  };
 }

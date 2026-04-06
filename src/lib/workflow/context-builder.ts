@@ -1,11 +1,11 @@
 import { WorkflowContext } from "@/types/gtm";
 import { prisma } from "@/lib/db/client";
 
-export function buildStepContext(ctx: WorkflowContext, include?: string[]): string {
+export function buildStepContext(ctx: WorkflowContext): string {
   const parts: string[] = [];
 
   parts.push("=== COMPANY PROFILE ===");
-  parts.push(JSON.stringify(ctx.companyProfile));
+  parts.push(JSON.stringify(ctx.companyProfile, null, 2));
 
   if (Object.keys(ctx.clarifyingAnswers).length > 0) {
     parts.push("\n=== CLARIFYING ANSWERS FROM TEAM ===");
@@ -14,41 +14,40 @@ export function buildStepContext(ctx: WorkflowContext, include?: string[]): stri
     });
   }
 
-  const shouldInclude = (key: string) => include === undefined || include.includes(key);
-
-  if (shouldInclude("INDUSTRY_PRIORITY") && ctx.steps.INDUSTRY_PRIORITY) {
+  // Sections emitted in workflow order so AI reads prior steps before later ones
+  if (ctx.steps.INDUSTRY_PRIORITY) {
     parts.push("\n=== INDUSTRY PRIORITIES ===");
-    parts.push(JSON.stringify(ctx.steps.INDUSTRY_PRIORITY));
+    parts.push(JSON.stringify(ctx.steps.INDUSTRY_PRIORITY, null, 2));
   }
 
-  if (shouldInclude("TARGET_MARKETS") && ctx.steps.TARGET_MARKETS) {
-    parts.push("\n=== TARGET MARKETS ===");
-    parts.push(JSON.stringify(ctx.steps.TARGET_MARKETS));
-  }
-
-  if (shouldInclude("ICP") && ctx.steps.ICP) {
+  if (ctx.steps.ICP) {
     parts.push("\n=== ICP DEFINITIONS ===");
-    parts.push(JSON.stringify(ctx.steps.ICP));
+    parts.push(JSON.stringify(ctx.steps.ICP, null, 2));
   }
 
-  if (shouldInclude("COMPETITIVE") && ctx.steps.COMPETITIVE) {
+  if (ctx.steps.TARGET_MARKETS) {
+    parts.push("\n=== TARGET MARKETS ===");
+    parts.push(JSON.stringify(ctx.steps.TARGET_MARKETS, null, 2));
+  }
+
+  if (ctx.steps.COMPETITIVE) {
     parts.push("\n=== COMPETITIVE ANALYSIS ===");
-    parts.push(JSON.stringify(ctx.steps.COMPETITIVE));
+    parts.push(JSON.stringify(ctx.steps.COMPETITIVE, null, 2));
   }
 
-  if (shouldInclude("SEGMENTATION") && ctx.steps.SEGMENTATION) {
+  if (ctx.steps.SEGMENTATION) {
     parts.push("\n=== SEGMENTS ===");
-    parts.push(JSON.stringify(ctx.steps.SEGMENTATION));
+    parts.push(JSON.stringify(ctx.steps.SEGMENTATION, null, 2));
   }
 
-  if (shouldInclude("MARKET_SIZING") && ctx.steps.MARKET_SIZING) {
+  if (ctx.steps.MARKET_SIZING) {
     parts.push("\n=== MARKET SIZING DATA ===");
-    parts.push(JSON.stringify(ctx.steps.MARKET_SIZING));
+    parts.push(JSON.stringify(ctx.steps.MARKET_SIZING, null, 2));
   }
 
-  if (shouldInclude("POSITIONING") && ctx.steps.POSITIONING) {
+  if (ctx.steps.POSITIONING) {
     parts.push("\n=== POSITIONING ===");
-    parts.push(JSON.stringify(ctx.steps.POSITIONING));
+    parts.push(JSON.stringify(ctx.steps.POSITIONING, null, 2));
   }
 
   return parts.join("\n");

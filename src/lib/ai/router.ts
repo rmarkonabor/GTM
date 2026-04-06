@@ -3,14 +3,15 @@ import { TaskComplexity, LLMProvider } from "@/types/gtm";
 export type TaskName =
   | "research-enrichment"
   | "clarifying-questions"
-  | "target-markets"
   | "industry-priority"
   | "icp-creation"
+  | "target-markets"
   | "segmentation"
   | "market-sizing-analysis"
   | "competitive-analysis"
   | "positioning"
   | "manifesto"
+  | "expand-step"
   | "format-for-export"
   | "step-summary"
   | "error-explanation"
@@ -19,14 +20,15 @@ export type TaskName =
 const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "research-enrichment": "COMPLEX",
   "clarifying-questions": "MEDIUM",
+  "industry-priority": "COMPLEX",
+  "icp-creation": "COMPLEX",
   "target-markets": "COMPLEX",
-  "industry-priority": "MEDIUM",
-  "icp-creation": "MEDIUM",
   "segmentation": "MEDIUM",
-  "market-sizing-analysis": "MEDIUM",
+  "market-sizing-analysis": "COMPLEX",
   "competitive-analysis": "COMPLEX",
   "positioning": "COMPLEX",
   "manifesto": "COMPLEX",
+  "expand-step": "COMPLEX",
   "format-for-export": "SIMPLE",
   "step-summary": "SIMPLE",
   "error-explanation": "SIMPLE",
@@ -41,7 +43,7 @@ const MODEL_TIER: Record<LLMProvider, Record<TaskComplexity, string>> = {
   },
   anthropic: {
     COMPLEX: "claude-sonnet-4-6",
-    MEDIUM: "claude-haiku-4-5-20251001",
+    MEDIUM: "claude-sonnet-4-6",
     SIMPLE: "claude-haiku-4-5-20251001",
   },
   google: {

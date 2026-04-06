@@ -105,6 +105,8 @@ model ProjectStep {
   // Error details
   errorCode   String?
   errorMsg    String?
+  // Token usage from LLM call (null for non-LLM steps like MARKET_SIZING)
+  tokenUsage  Json?
   startedAt   DateTime?
   completedAt DateTime?
   updatedAt   DateTime   @updatedAt

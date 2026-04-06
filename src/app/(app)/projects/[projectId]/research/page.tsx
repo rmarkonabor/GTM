@@ -37,7 +37,7 @@ export default function ResearchPage({ params }: { params: Promise<{ projectId: 
         projectId={projectId}
         stepName="RESEARCH"
         stepLabel="Company Research"
-        onApproved={() => router.push(`/projects/${projectId}`)}
+        onApproved={() => router.push(`/projects/${projectId}/industry-priority`)}
       >
         {(output) => {
           const { companyProfile: cp } = output as ResearchOutput;
