@@ -10,6 +10,7 @@ interface StepData {
   stepName: string;
   status: string;
   output: unknown;
+  draftOutput: unknown;
 }
 
 interface Project {
@@ -46,6 +47,7 @@ interface TargetMarket {
 interface ICP {
   niche: string;
   standardIndustry: string;
+  keywords: string[];
   buyerPersonas: { title: string }[];
   firmographics: { companySize: string[]; geographies: string[] };
 }
@@ -111,7 +113,11 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
 
   const stepMap: Record<string, unknown> = {};
   for (const s of project.steps) {
-    if (s.status === "COMPLETE" && s.output) stepMap[s.stepName] = s.output;
+    // Show the latest data: draftOutput for awaiting-approval, output for completed
+    const data = s.status === "AWAITING_APPROVAL" ? (s.draftOutput ?? s.output) : s.output;
+    if (data && (s.status === "COMPLETE" || s.status === "AWAITING_APPROVAL")) {
+      stepMap[s.stepName] = data;
+    }
   }
 
   const profile = project.companyProfile;
@@ -122,7 +128,7 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
   const segments = (stepMap.SEGMENTATION as { segments: Segment[] })?.segments;
   const manifesto = stepMap.MANIFESTO as Manifesto | undefined;
 
-  const completedCount = project.steps.filter((s) => s.status === "COMPLETE").length;
+  const completedCount = project.steps.filter((s) => s.status === "COMPLETE" || s.status === "AWAITING_APPROVAL").length;
   const totalSteps = 6;
   const allDone = completedCount >= totalSteps;
 
@@ -251,6 +257,13 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
               <Card key={icp.niche}>
                 <p className="font-semibold text-white text-sm mb-1">{icp.niche}</p>
                 <p className="text-xs text-slate-500 mb-2">{icp.firmographics.geographies?.slice(0, 2).join(", ")}</p>
+                {icp.keywords?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {icp.keywords.slice(0, 4).map((kw) => (
+                      <span key={kw} className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{kw}</span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1">
                   {icp.buyerPersonas.slice(0, 2).map((bp) => (
                     <span key={bp.title} className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full">{bp.title}</span>
