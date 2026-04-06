@@ -35,8 +35,9 @@ export const gtmWorkflow = inngest.createFunction(
   async ({ event, step }: any) => {
     const { projectId } = event.data as { projectId: string };
 
-    // Load project, user LLM settings, and completed step outputs
-    const loaded = await step.run("load-context", async () => {
+    // Load project, user LLM settings, and completed step outputs.
+    // Use a unique step ID per event timestamp so Inngest never replays a stale snapshot.
+    const loaded = await step.run(`load-context-${event.ts ?? Date.now()}`, async () => {
       const p = await prisma.project.findUnique({
         where: { id: projectId },
         include: { steps: true },

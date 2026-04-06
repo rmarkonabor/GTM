@@ -40,14 +40,9 @@ export async function POST(
       },
     });
 
-    // Trigger workflow to run the next step
-    await inngest.send({
-      name: "gtm/workflow.start",
-      data: { projectId },
-    });
-
-    // Reset the immediate next step to PENDING if it's stale (AWAITING_APPROVAL or ERROR)
-    // so the orchestrator can re-run it with fresh context after a re-edit
+    // Reset the immediate next step to PENDING BEFORE firing the workflow so the
+    // orchestrator always sees it as runnable (avoids a race where Inngest reads
+    // AWAITING_APPROVAL/ERROR before this update and skips it)
     const currentIdx = WORKFLOW_STEP_ORDER.indexOf(stepName);
     const nextStep = WORKFLOW_STEP_ORDER[currentIdx + 1];
     if (nextStep) {
@@ -60,6 +55,12 @@ export async function POST(
         data: { status: "PENDING", draftOutput: Prisma.DbNull },
       });
     }
+
+    // Trigger workflow to run the next step — fires AFTER the reset so it reads fresh state
+    await inngest.send({
+      name: "gtm/workflow.start",
+      data: { projectId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
