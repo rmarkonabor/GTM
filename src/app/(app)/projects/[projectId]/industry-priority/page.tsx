@@ -36,6 +36,9 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
       <StepPageWrapper projectId={projectId} stepName="INDUSTRY_PRIORITY" stepLabel="Industry Priority">
         {(output) => {
           const { industries } = output as IndustryPriorityOutput;
+          if (!industries?.length) {
+            return <p className="text-slate-500 text-sm py-8 text-center">No industries found in output.</p>;
+          }
           return (
             <div className="space-y-4">
               {industries.map((ind) => (

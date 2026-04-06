@@ -22,7 +22,7 @@ export async function runPositioning(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
 ): Promise<PositioningOutput> {
-  const context = buildStepContext(ctx, ["ICP", "COMPETITIVE", "SEGMENTATION"]);
+  const context = buildStepContext(ctx, ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP", "COMPETITIVE", "SEGMENTATION"]);
   let prompt = buildPositioningPrompt(context);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
