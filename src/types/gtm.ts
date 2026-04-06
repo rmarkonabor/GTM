@@ -82,7 +82,9 @@ export interface BuyerPersona {
 }
 
 export interface ICPDefinition {
-  industryName: string; // references IndustryDefinition.niche
+  standardIndustry: string;  // Apollo/LinkedIn-compatible: "Computer Software", "Financial Services"
+  niche: string;             // Sub-segment: "HR Tech", "Legal Tech", "Fintech for SMBs"
+  keywords: string[];        // Targeting terms: ["HRIS", "payroll", "workforce management"]
   firmographics: Firmographics;
   buyerPersonas: BuyerPersona[];
 }

@@ -19,7 +19,9 @@ const firmographicsSchema = z.object({
 const schema = z.object({
   icps: z.array(
     z.object({
-      industryName: z.string(),
+      standardIndustry: z.string(),
+      niche: z.string(),
+      keywords: z.array(z.string()),
       firmographics: firmographicsSchema,
       buyerPersonas: z.array(
         z.object({

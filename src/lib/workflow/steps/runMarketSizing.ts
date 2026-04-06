@@ -14,7 +14,8 @@ export async function runMarketSizing(
     // Find matching ICP for this segment's industry
     const matchingIcp = icps.find((icp) =>
       segment.industries.some((ind) =>
-        icp.industryName.toLowerCase().includes(ind.toLowerCase())
+        icp.standardIndustry.toLowerCase().includes(ind.toLowerCase()) ||
+        icp.niche.toLowerCase().includes(ind.toLowerCase())
       )
     ) ?? icps[0];
 
