@@ -1,4 +1,5 @@
 import { WorkflowContext, MarketSizingOutput, MarketSizeResult, WorkflowStepResult } from "@/types/gtm";
+import { StepDependencyError } from "@/lib/errors/types";
 import { getMarketSize } from "@/lib/integrations/apollo";
 
 export async function runMarketSizing(
@@ -8,6 +9,9 @@ export async function runMarketSizing(
 ): Promise<WorkflowStepResult<MarketSizingOutput>> {
   const segments = ctx.steps.SEGMENTATION?.segments ?? [];
   const icps = ctx.steps.ICP?.icps ?? [];
+
+  if (!segments.length) throw new StepDependencyError("SEGMENTATION");
+  if (!icps.length) throw new StepDependencyError("ICP");
 
   if (!dbPrefs.apollo?.apiKey) {
     throw new Error("Apollo API key is required for market sizing. Add your Apollo key in Settings → Database Connections.");
@@ -50,7 +54,11 @@ export async function runMarketSizing(
           filtersUsed,
           fetchedAt: new Date().toISOString(),
         });
-      } catch {
+      } catch (err) {
+        // Re-throw auth/rate-limit errors — these are actionable and shouldn't be silenced
+        const { ApolloAuthError, ApolloRateLimitError } = await import("@/lib/errors/types");
+        if (err instanceof ApolloAuthError || err instanceof ApolloRateLimitError) throw err;
+        // For other errors (network, filter issues), record zero counts for this segment
         results.push({
           segmentId: segment.id,
           segmentName: segment.name,
