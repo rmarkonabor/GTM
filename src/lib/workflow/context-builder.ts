@@ -16,19 +16,24 @@ export function buildStepContext(ctx: WorkflowContext, include?: string[]): stri
 
   const shouldInclude = (key: string) => include === undefined || include.includes(key);
 
-  if (shouldInclude("TARGET_MARKETS") && ctx.steps.TARGET_MARKETS) {
-    parts.push("\n=== TARGET MARKETS ===");
-    parts.push(JSON.stringify(ctx.steps.TARGET_MARKETS));
-  }
-
   if (shouldInclude("INDUSTRY_PRIORITY") && ctx.steps.INDUSTRY_PRIORITY) {
     parts.push("\n=== INDUSTRY PRIORITIES ===");
     parts.push(JSON.stringify(ctx.steps.INDUSTRY_PRIORITY));
   }
 
+  if (shouldInclude("TARGET_MARKETS") && ctx.steps.TARGET_MARKETS) {
+    parts.push("\n=== TARGET MARKETS ===");
+    parts.push(JSON.stringify(ctx.steps.TARGET_MARKETS));
+  }
+
   if (shouldInclude("ICP") && ctx.steps.ICP) {
     parts.push("\n=== ICP DEFINITIONS ===");
     parts.push(JSON.stringify(ctx.steps.ICP));
+  }
+
+  if (shouldInclude("COMPETITIVE") && ctx.steps.COMPETITIVE) {
+    parts.push("\n=== COMPETITIVE ANALYSIS ===");
+    parts.push(JSON.stringify(ctx.steps.COMPETITIVE));
   }
 
   if (shouldInclude("SEGMENTATION") && ctx.steps.SEGMENTATION) {
@@ -39,11 +44,6 @@ export function buildStepContext(ctx: WorkflowContext, include?: string[]): stri
   if (shouldInclude("MARKET_SIZING") && ctx.steps.MARKET_SIZING) {
     parts.push("\n=== MARKET SIZING DATA ===");
     parts.push(JSON.stringify(ctx.steps.MARKET_SIZING));
-  }
-
-  if (shouldInclude("COMPETITIVE") && ctx.steps.COMPETITIVE) {
-    parts.push("\n=== COMPETITIVE ANALYSIS ===");
-    parts.push(JSON.stringify(ctx.steps.COMPETITIVE));
   }
 
   if (shouldInclude("POSITIONING") && ctx.steps.POSITIONING) {
