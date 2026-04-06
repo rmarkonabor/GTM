@@ -28,8 +28,7 @@ export const gtmWorkflow = inngest.createFunction(
   {
     id: "gtm-workflow",
     retries: 1,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    triggers: [{ event: "gtm/workflow.start" }, { event: "gtm/step.approved" }] as any,
+    triggers: [{ event: "gtm/workflow.start" }],
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: any) => {

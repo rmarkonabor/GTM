@@ -58,9 +58,11 @@ export async function POST(
       }
     }
 
-    // All other steps: trigger next step in workflow
+    // All other steps: trigger next step in workflow using the same event
+    // as workflow.start — avoids depending on gtm/step.approved being
+    // registered as a function trigger (requires an Inngest re-sync after deploy).
     await inngest.send({
-      name: "gtm/step.approved",
+      name: "gtm/workflow.start",
       data: { projectId },
     });
 
