@@ -1,7 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { LanguageModel } from "ai";
+import { LanguageModel, wrapLanguageModel, defaultSettingsMiddleware } from "ai";
 import { LLMProvider } from "@/types/gtm";
 import { getModelForTask, TaskName } from "./router";
 import { LLMInvalidKeyError } from "@/lib/errors/types";
@@ -21,10 +21,20 @@ export function getLanguageModel(
     }
     case "anthropic": {
       const anthropic = createAnthropic({ apiKey });
-      // Use jsonTool mode to avoid Anthropic's output_config.format API which
-      // has a stricter JSON schema subset (rejects propertyNames and others).
-      // jsonTool uses tool-call-based structured output which is more permissive.
-      return anthropic(modelId, { structuredOutputMode: "jsonTool" }) as LanguageModel;
+      // Wrap with defaultSettingsMiddleware to inject providerOptions on every call.
+      // This forces jsonTool mode which uses tool-call-based structured output instead
+      // of output_config.format — the latter rejects propertyNames and other JSON
+      // schema keywords that Zod v4 can generate.
+      return wrapLanguageModel({
+        model: anthropic(modelId) as LanguageModel,
+        middleware: defaultSettingsMiddleware({
+          settings: {
+            providerOptions: {
+              anthropic: { structuredOutputMode: "jsonTool" },
+            },
+          },
+        }),
+      }) as LanguageModel;
     }
     case "google": {
       const google = createGoogleGenerativeAI({ apiKey });

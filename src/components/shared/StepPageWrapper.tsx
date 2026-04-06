@@ -79,7 +79,11 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to approve");
       toast.success("Step approved! Next step will start shortly.");
-      await refresh();
+      // Optimistically flip to COMPLETE immediately — don't re-fetch because the
+      // approve DB write may not be visible yet on the next read connection.
+      setStep((prev) =>
+        prev ? { ...prev, status: "COMPLETE", output: prev.draftOutput } : prev
+      );
       if (onApproved) {
         // Brief pause so user sees the green "Approved" state before navigating
         await new Promise((r) => setTimeout(r, 1200));
@@ -87,6 +91,8 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       }
     } catch (err) {
       toast.error((err as Error).message);
+      // Re-fetch on error to sync actual state
+      await refresh();
     } finally {
       setApproving(false);
     }
