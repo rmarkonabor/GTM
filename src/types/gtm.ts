@@ -105,8 +105,6 @@ export interface TargetMarket {
   macroTrends: string[];
   whyRightMarket: string;
   priorityScore: number; // 1-10
-  firmographics: Firmographics;
-  buyerPersonas: BuyerPersona[];
 }
 
 export interface TargetMarketsOutput {
