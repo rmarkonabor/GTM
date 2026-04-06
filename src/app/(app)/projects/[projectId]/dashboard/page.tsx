@@ -139,7 +139,7 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
           {manifesto?.tagline ? (
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{manifesto.tagline}</h1>
           ) : (
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{profile?.name ?? "GTM Strategy"}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{profile?.name ?? "Your Strategy"}</h1>
           )}
           {manifesto?.elevatorPitch ? (
             <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{manifesto.elevatorPitch}</p>

@@ -9,7 +9,7 @@ export default function LandingPage() {
       <nav className="border-b border-white/10 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center gap-2">
           <Target className="h-6 w-6 text-violet-400" />
-          <span className="font-bold text-lg">GTM Planner</span>
+          <span className="font-bold text-lg">NABOR AI</span>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/sign-in">
@@ -38,7 +38,7 @@ export default function LandingPage() {
 
         <p className="text-xl text-slate-400 max-w-2xl mx-auto mb-10">
           Enter your website URL. Our AI researches your company, identifies your best markets,
-          validates sizing against real databases like Apollo, and delivers a battle-ready GTM strategy.
+          defines ideal customer profiles, and delivers a battle-ready GTM strategy.
         </p>
 
         <Link href="/sign-in">
@@ -65,8 +65,8 @@ export default function LandingPage() {
             },
             {
               icon: BarChart3,
-              title: "Database-Validated Sizing",
-              desc: "Your TAM, SAM & SOM are tested against Apollo.io and Clay — real account counts, not AI estimates.",
+              title: "Segments & Positioning",
+              desc: "AI-generated market segments with targeted positioning, messaging hooks, and proof points for each.",
             },
             {
               icon: Users,

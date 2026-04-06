@@ -192,7 +192,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
 
   const isAwaiting = step.status === "AWAITING_APPROVAL";
   const usage = step.tokenUsage;
-  const hasUsage = usage && (usage.totalTokens > 0 || usage.model !== "apollo-api");
+  const hasUsage = usage && usage.totalTokens > 0;
 
   return (
     <div className="space-y-4">

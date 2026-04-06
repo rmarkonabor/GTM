@@ -41,7 +41,7 @@ export default function SignInPage() {
           <div className="flex justify-center mb-4">
             <Target className="h-10 w-10 text-violet-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Sign in to GTM Planner</h1>
+          <h1 className="text-2xl font-bold text-white">Sign in to NABOR AI</h1>
           <p className="text-slate-400 mt-2 text-sm">Build your go-to-market strategy</p>
         </div>
 

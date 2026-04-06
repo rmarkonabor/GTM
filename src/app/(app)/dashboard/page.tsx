@@ -76,7 +76,7 @@ export default function DashboardPage() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Your GTM Projects</h1>
+          <h1 className="text-2xl font-bold text-white">Your Projects</h1>
           <p className="text-slate-400 mt-1 text-sm">Each project is a complete go-to-market strategy built by AI.</p>
         </div>
         <Link href="/projects/new">
@@ -112,12 +112,12 @@ export default function DashboardPage() {
 
           <h3 className="font-bold text-white mb-2 text-xl">No projects yet</h3>
           <p className="text-slate-400 text-sm mb-6 text-center max-w-sm leading-relaxed px-4">
-            Enter your website URL and AI will build your complete GTM strategy — from ICP to messaging — in minutes.
+            Enter your website URL and AI will build your complete go-to-market strategy — from ICP to messaging — in minutes.
           </p>
 
           {/* Feature pills */}
           <div className="flex flex-wrap items-center justify-center gap-2 mb-8 px-4">
-            {["ICP & Personas", "Target Markets", "Competitive Analysis", "GTM Manifesto"].map((label) => (
+            {["ICP & Personas", "Target Markets", "Competitive Analysis", "Manifesto"].map((label) => (
               <span
                 key={label}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400"

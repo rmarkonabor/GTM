@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GTM Planner — AI-Powered Go-To-Market Strategy",
+  title: "NABOR AI — Go-To-Market Strategy Platform",
   description:
     "Build a complete GTM strategy from your website URL. AI-powered market research, ICP definition, and competitive analysis.",
 };

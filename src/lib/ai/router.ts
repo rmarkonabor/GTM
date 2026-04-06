@@ -7,9 +7,7 @@ export type TaskName =
   | "icp-creation"
   | "target-markets"
   | "segmentation"
-  | "market-sizing-analysis"
   | "competitive-analysis"
-  | "positioning"
   | "manifesto"
   | "expand-step"
   | "format-for-export"
@@ -24,9 +22,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "icp-creation": "COMPLEX",
   "target-markets": "COMPLEX",
   "segmentation": "MEDIUM",
-  "market-sizing-analysis": "COMPLEX",
   "competitive-analysis": "COMPLEX",
-  "positioning": "COMPLEX",
   "manifesto": "COMPLEX",
   "expand-step": "COMPLEX",
   "format-for-export": "SIMPLE",

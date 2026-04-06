@@ -57,34 +57,6 @@ export class LLMTimeoutError extends LLMError {
   }
 }
 
-export class DatabaseApiError extends GTMError {
-  constructor(message: string, code: string) {
-    super(message, code);
-    this.name = "DatabaseApiError";
-  }
-}
-
-export class ApolloRateLimitError extends DatabaseApiError {
-  constructor() {
-    super("Apollo.io rate limit reached. Please wait a moment and try again.", "APOLLO_RATE_LIMIT");
-    this.name = "ApolloRateLimitError";
-  }
-}
-
-export class ApolloAuthError extends DatabaseApiError {
-  constructor() {
-    super("Invalid Apollo.io API key. Please check your settings.", "APOLLO_AUTH_ERROR");
-    this.name = "ApolloAuthError";
-  }
-}
-
-export class ClayTimeoutError extends DatabaseApiError {
-  constructor() {
-    super("Clay request timed out. Please try again.", "CLAY_TIMEOUT");
-    this.name = "ClayTimeoutError";
-  }
-}
-
 export class WorkflowError extends GTMError {
   constructor(message: string, code: string) {
     super(message, code);

@@ -15,7 +15,6 @@ const STEP_PATHS: Record<string, string> = {
   ICP: "icp",
   SEGMENTATION: "segmentation",
   COMPETITIVE: "competitive-analysis",
-  POSITIONING: "positioning",
   MANIFESTO: "manifesto",
 };
 
@@ -160,7 +159,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   if (phase === "loading" || phase === "researching" || phase === "starting") {
     const label =
       phase === "researching" ? "Analyzing your website…" :
-      phase === "starting" ? "Starting GTM analysis…" :
+      phase === "starting" ? "Starting analysis…" :
       "Loading project…";
 
     return (
@@ -214,7 +213,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">A few quick questions</h1>
         <p className="text-slate-500 text-sm">
-          Help the AI tailor your GTM strategy. Optional questions can be skipped.
+          Help the AI tailor your strategy. Optional questions can be skipped.
         </p>
       </div>
 
@@ -242,7 +241,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
           className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-          {submitting ? "Building strategy…" : "Build My GTM Strategy"}
+          {submitting ? "Building strategy…" : "Build My Strategy"}
         </Button>
       </form>
     </div>

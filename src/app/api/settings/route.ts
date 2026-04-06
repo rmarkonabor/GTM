@@ -10,11 +10,7 @@ const schema = z.object({
   llm: z.object({
     provider: z.enum(["openai", "anthropic", "google"]),
     apiKey: z.string().min(1, "API key is required"),
-  }).optional(),
-  databases: z.object({
-    apollo: z.object({ apiKey: z.string() }).optional(),
-    clay: z.object({ apiKey: z.string() }).optional(),
-  }).optional(),
+  }),
 });
 
 export async function POST(req: NextRequest) {
@@ -25,26 +21,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { llm, databases } = schema.parse(body);
-
-    const updates: Record<string, string> = {};
-
-    if (llm) {
-      updates.llmPreference = encrypt(JSON.stringify(llm));
-    }
-
-    if (databases) {
-      // Merge with existing db prefs so saving Apollo doesn't wipe Clay and vice versa
-      const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-      const existing = safeDecrypt(user?.dbPreferences ?? null);
-      const existingParsed = existing ? JSON.parse(existing) : {};
-      const merged = { ...existingParsed, ...databases };
-      updates.dbPreferences = encrypt(JSON.stringify(merged));
-    }
+    const { llm } = schema.parse(body);
 
     await prisma.user.update({
       where: { id: session.user.id },
-      data: updates,
+      data: { llmPreference: encrypt(JSON.stringify(llm)) },
     });
 
     return NextResponse.json({ success: true });
@@ -65,13 +46,8 @@ export async function GET() {
     const llmRaw = safeDecrypt(user?.llmPreference ?? null);
     const llmParsed = llmRaw ? (JSON.parse(llmRaw) as { provider: string; apiKey: string }) : null;
 
-    const dbRaw = safeDecrypt(user?.dbPreferences ?? null);
-    const dbParsed = dbRaw ? (JSON.parse(dbRaw) as { apollo?: { apiKey: string }; clay?: { apiKey: string } }) : {};
-
     return NextResponse.json({
       llm: llmParsed ? { provider: llmParsed.provider, apiKey: llmParsed.apiKey } : null,
-      apollo: dbParsed.apollo?.apiKey ?? null,
-      clay: dbParsed.clay?.apiKey ?? null,
     });
   } catch (err) {
     return errorResponse(err);

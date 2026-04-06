@@ -56,7 +56,7 @@ model User {
   image         String?
   // Encrypted JSON: { provider: "openai"|"anthropic"|"google", apiKey: string }
   llmPreference String?   @db.Text
-  // Encrypted JSON: { apollo: { apiKey: string }, clay: { apiKey: string } }
+  // Deprecated: was used for Apollo/Clay API keys
   dbPreferences String?   @db.Text
   accounts      Account[]
   sessions      Session[]
@@ -105,7 +105,7 @@ model ProjectStep {
   // Error details
   errorCode   String?
   errorMsg    String?
-  // Token usage from LLM call (null for non-LLM steps like MARKET_SIZING)
+  // Token usage from LLM call
   tokenUsage  Json?
   startedAt   DateTime?
   completedAt DateTime?
@@ -122,9 +122,7 @@ enum StepName {
   INDUSTRY_PRIORITY
   ICP
   SEGMENTATION
-  MARKET_SIZING
   COMPETITIVE
-  POSITIONING
   MANIFESTO
 }
 

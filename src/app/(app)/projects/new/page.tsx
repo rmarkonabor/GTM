@@ -11,7 +11,7 @@ import { Globe, ArrowRight, Loader2, Building2, Users, BarChart3 } from "lucide-
 const FEATURES = [
   { icon: Building2, title: "Industry & ICP", desc: "Ranked industries and ideal customer profiles with firmographic filters" },
   { icon: Users,     title: "Segments & Positioning", desc: "Per-segment messaging hooks, pain points, and proof points" },
-  { icon: BarChart3, title: "Competitive Edge", desc: "Where you win vs. competitors, and your GTM manifesto" },
+  { icon: BarChart3, title: "Competitive Edge", desc: "Where you win vs. competitors, and your brand manifesto" },
 ];
 
 export default function NewProjectPage() {
@@ -50,10 +50,10 @@ export default function NewProjectPage() {
         <div className="relative">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium px-3 py-1.5 rounded-full mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
-            AI-powered GTM strategy
+            AI-powered strategy
           </div>
           <h1 className="text-3xl font-bold text-white mb-2 leading-tight">
-            Build your GTM strategy<br />
+            Build your go-to-market strategy<br />
             <span className="text-violet-400">in minutes, not months</span>
           </h1>
           <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
@@ -120,7 +120,7 @@ export default function NewProjectPage() {
             </>
           ) : (
             <>
-              Start GTM Analysis
+              Start Analysis
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </>
           )}

@@ -113,7 +113,7 @@ export interface TargetMarketsOutput {
 }
 
 // ─── Segmentation + Positioning ──────────────────────────────────────────────
-// Runs after Market Sizing — segments with per-segment positioning strategy.
+// Market segments with per-segment positioning strategy.
 
 export interface SegmentPositioning {
   keyPainPoints: string[];   // top pain points specific to this segment

@@ -37,8 +37,8 @@ export function AppSidebar({ user }: Props) {
             <Target className="h-4 w-4 text-white" strokeWidth={2.5} />
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-white text-sm leading-tight tracking-tight">GTM Planner</p>
-            <p className="text-[10px] text-slate-500 leading-tight mt-0.5 tracking-wide">AI-powered strategy</p>
+            <p className="font-bold text-white text-sm leading-tight tracking-tight">NABOR AI</p>
+            <p className="text-[10px] text-slate-500 leading-tight mt-0.5 tracking-wide">GTM Strategy Platform</p>
           </div>
         </div>
       </div>
