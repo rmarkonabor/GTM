@@ -34,7 +34,8 @@ export async function runCompetitive(
   llm: { provider: string; apiKey: string }
 ): Promise<WorkflowStepResult<CompetitiveAnalysisOutput>> {
   const context = buildStepContext(ctx);
-  let prompt = buildCompetitivePrompt(context, ctx.businessType);
+  const targetMarkets = ctx.steps.TARGET_MARKETS?.markets ?? [];
+  let prompt = buildCompetitivePrompt(context, ctx.businessType, targetMarkets);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
   }
