@@ -18,7 +18,7 @@ import { z } from "zod";
 
 export const maxDuration = 120;
 
-const schema = z.object({ prompt: z.string().min(1) });
+const schema = z.object({ prompt: z.string().default("") });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = {

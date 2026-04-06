@@ -115,14 +115,13 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
     }
   };
 
-  const handleEdit = async () => {
-    if (!editPrompt.trim()) return;
+  const handleEdit = async (prompt = editPrompt) => {
     setEditRunning(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: editPrompt }),
+        body: JSON.stringify({ prompt }),
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to re-run step");
@@ -136,6 +135,8 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       setEditRunning(false);
     }
   };
+
+  const handleRerun = () => handleEdit("");
 
   const handleSave = useCallback(async (newOutput: object) => {
     try {
@@ -251,6 +252,15 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
           )}
           <Button
             variant="outline"
+            onClick={handleRerun}
+            disabled={editRunning}
+            className="border-white/20 text-slate-300 hover:text-white gap-2"
+          >
+            {editRunning && !editOpen ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-violet-400" />}
+            {editRunning && !editOpen ? "Re-running..." : "Re-run"}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => setEditMode(!editMode)}
             className={`gap-2 ${editMode ? "border-amber-500/30 text-amber-300 hover:text-amber-200" : "border-white/20 text-slate-300 hover:text-white"}`}
           >
@@ -281,7 +291,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
             />
             <div className="flex items-center gap-2">
               <Button
-                onClick={handleEdit}
+                onClick={() => handleEdit()}
                 disabled={editRunning || !editPrompt.trim()}
                 className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
               >
