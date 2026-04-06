@@ -368,7 +368,7 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-4 ${className}`}>
+    <div className={`bg-slate-900 border border-white/10 rounded-xl p-4 ${className}`}>
       {children}
     </div>
   );
@@ -382,7 +382,7 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ clas
   return (
     <div className="flex items-center gap-2 mb-4">
       <Icon className="h-4 w-4 text-violet-400" />
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
+      <h2 className="text-lg font-semibold text-white">{title}</h2>
     </div>
   );
 }

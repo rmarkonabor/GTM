@@ -37,7 +37,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+      <h1 className="text-2xl font-bold text-white mb-1">
         Ideal Customer Profile (ICP)
       </h1>
       <p className="text-slate-500 text-sm mb-6">
@@ -88,7 +88,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                           value={icp.niche}
                           editMode={editMode}
                           onSave={(v) => updateIcp(idx, { niche: v })}
-                          className="font-bold text-slate-900 dark:text-white text-lg leading-tight"
+                          className="font-bold text-white text-lg leading-tight"
                         />
                         <EditableText
                           value={icp.standardIndustry}
@@ -119,8 +119,8 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                   </div>
 
                   {/* Firmographics */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6 mb-4">
-                    <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                  <div className="bg-slate-900 border border-white/10 rounded-xl p-6 mb-4">
+                    <h3 className="font-semibold text-slate-300 mb-4 flex items-center gap-2">
                       <Target className="h-4 w-4 text-violet-400" />
                       Firmographics
                     </h3>
@@ -147,7 +147,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                             chipClass={
                               highlight
                                 ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                : "bg-slate-800 text-slate-300"
                             }
                           />
                         </div>
@@ -160,7 +160,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                     {icp.buyerPersonas.map((persona, pi) => (
                       <div
                         key={pi}
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5"
+                        className="bg-slate-900 border border-white/10 rounded-xl p-5"
                       >
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2 flex-wrap flex-1">
@@ -169,7 +169,7 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                               value={persona.title}
                               editMode={editMode}
                               onSave={(v) => updatePersona(idx, pi, { title: v })}
-                              className="font-semibold text-slate-900 dark:text-white"
+                              className="font-semibold text-white"
                             />
                             <div className="flex gap-1 flex-wrap">
                               <EditableChips

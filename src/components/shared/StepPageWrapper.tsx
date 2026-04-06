@@ -285,7 +285,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
               placeholder={`Describe changes to make to the ${stepLabel} output... e.g. "Focus more on enterprise customers in North America"`}
               value={editPrompt}
               onChange={(e) => setEditPrompt(e.target.value)}
-              className="dark:bg-slate-800 dark:border-white/20 dark:text-white resize-none text-sm"
+              className="bg-slate-800 border-white/20 text-white resize-none text-sm"
               rows={3}
               disabled={editRunning}
             />

@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/sign-in");
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen bg-slate-950">
       <AppSidebar user={session.user} />
       <main className="flex-1 overflow-y-auto">
         {children}

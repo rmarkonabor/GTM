@@ -25,7 +25,7 @@ export default function ManifestoPage({ params }: { params: Promise<{ projectId:
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Manifesto &amp; Messaging</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Manifesto &amp; Messaging</h1>
       <p className="text-slate-500 text-sm mb-6">Your brand voice, messaging pillars, and elevator pitch.</p>
 
       <StepPageWrapper projectId={projectId} stepName="MANIFESTO" stepLabel="Manifesto">
@@ -62,40 +62,40 @@ export default function ManifestoPage({ params }: { params: Promise<{ projectId:
                     { label: "Why choose us", key: "whyChooseThem" as const },
                   ] as const
                 ).map((item) => (
-                  <div key={item.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+                  <div key={item.label} className="bg-slate-900 border border-white/10 rounded-xl p-5">
                     <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{item.label}</h3>
                     <EditableText
                       value={m[item.key]}
                       editMode={editMode}
                       onSave={(v) => patch({ [item.key]: v })}
                       multiline
-                      className="text-slate-700 dark:text-slate-300 text-sm"
+                      className="text-slate-300 text-sm"
                     />
                   </div>
                 ))}
               </div>
 
               {/* Elevator pitch */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6">
+              <div className="bg-slate-900 border border-white/10 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Quote className="h-4 w-4 text-violet-400" />
-                  <h3 className="font-semibold text-slate-900 dark:text-white">Elevator Pitch</h3>
+                  <h3 className="font-semibold text-white">Elevator Pitch</h3>
                 </div>
                 <EditableText
                   value={m.elevatorPitch}
                   editMode={editMode}
                   onSave={(v) => patch({ elevatorPitch: v })}
                   multiline
-                  className="text-slate-600 dark:text-slate-400 leading-relaxed"
+                  className="text-slate-400 leading-relaxed"
                 />
               </div>
 
               {/* Messaging pillars */}
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Messaging Pillars</h3>
+                <h3 className="font-semibold text-white mb-4">Messaging Pillars</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {m.messagingPillars.map((p) => (
-                    <div key={p.pillar} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+                    <div key={p.pillar} className="bg-slate-900 border border-white/10 rounded-xl p-5">
                       <div className="flex items-start justify-between mb-2">
                         <div className="inline-flex items-center bg-violet-500/10 text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full">
                           <EditableText
@@ -118,14 +118,14 @@ export default function ManifestoPage({ params }: { params: Promise<{ projectId:
                         value={p.headline}
                         editMode={editMode}
                         onSave={(v) => updatePillar(p.pillar, { headline: v })}
-                        className="font-semibold text-slate-900 dark:text-white mb-3"
+                        className="font-semibold text-white mb-3"
                       />
                       <EditableList
                         items={p.supportingPoints ?? []}
                         onSave={(v) => updatePillar(p.pillar, { supportingPoints: v })}
                         editMode={editMode}
                         dotColor="bg-violet-400"
-                        textClass="text-xs text-slate-500 dark:text-slate-400"
+                        textClass="text-xs text-slate-400"
                       />
                     </div>
                   ))}

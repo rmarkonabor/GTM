@@ -165,12 +165,12 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
     return (
       <div className="p-8 max-w-xl">
-        <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 mb-4">
+        <div className="flex items-center gap-3 text-slate-400 mb-4">
           <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
           <span className="text-sm">{label}</span>
         </div>
         {project && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+          <div className="bg-slate-900 border border-white/10 rounded-xl p-5">
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <Globe className="h-4 w-4" />
               {project.websiteUrl}
@@ -190,11 +190,11 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   if (phase === "error") {
     return (
       <div className="p-8 max-w-xl">
-        <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-5">
+        <div className="flex items-start gap-3 bg-red-900/20 border border-red-800 rounded-xl p-5">
           <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium text-red-700 dark:text-red-300">Something went wrong</p>
-            <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errorMsg}</p>
+            <p className="font-medium text-red-300">Something went wrong</p>
+            <p className="text-sm text-red-400 mt-1">{errorMsg}</p>
           </div>
         </div>
         <Button
@@ -212,16 +212,16 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   return (
     <div className="p-8 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">A few quick questions</h1>
+        <h1 className="text-2xl font-bold text-white mb-1">A few quick questions</h1>
         <p className="text-slate-500 text-sm">
           Help the AI tailor your GTM strategy. Optional questions can be skipped.
         </p>
       </div>
 
-      <form onSubmit={handleAnswersSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleAnswersSubmit} className="bg-slate-900 border border-white/10 rounded-xl p-6 space-y-5">
         {questions.map((q) => (
           <div key={q.id}>
-            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <Label className="text-sm font-medium text-slate-300">
               {q.question}
               {q.optional && <span className="ml-1.5 text-slate-400 font-normal">(optional)</span>}
             </Label>
@@ -230,7 +230,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
               placeholder="Your answer…"
               value={answers[q.id] ?? ""}
               onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-              className="dark:bg-slate-800 dark:border-white/20 dark:text-white resize-none"
+              className="bg-slate-800 border-white/20 text-white resize-none"
               rows={2}
             />
           </div>

@@ -54,7 +54,7 @@ export function EditableChips({
   items,
   onSave,
   editMode,
-  chipClass = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+  chipClass = "bg-slate-800 text-slate-300",
 }: {
   items: string[];
   onSave: (items: string[]) => void;
@@ -154,7 +154,7 @@ export function EditableList({
   onSave,
   editMode,
   dotColor = "bg-slate-400",
-  textClass = "text-xs text-slate-600 dark:text-slate-400",
+  textClass = "text-xs text-slate-400",
 }: {
   items: string[];
   onSave: (items: string[]) => void;

@@ -33,7 +33,7 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Industry Priority</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Industry Priority</h1>
       <p className="text-slate-500 text-sm mb-6">
         Priority industries with database-compatible classifications, sub-niches, and targeting keywords.
       </p>
@@ -53,7 +53,7 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
               {industries.map((ind) => (
                 <div
                   key={ind.priorityRank}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6"
+                  className="bg-slate-900 border border-white/10 rounded-xl p-6"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -66,7 +66,7 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
                             value={ind.niche}
                             editMode={editMode}
                             onSave={(v) => update(ind.priorityRank, { niche: v })}
-                            className="font-bold text-slate-900 dark:text-white"
+                            className="font-bold text-white"
                           />
                         </div>
                         <EditableText
@@ -140,7 +140,7 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
                         editMode={editMode}
                         onSave={(v) => update(ind.priorityRank, { howTheyWorkTogether: v })}
                         multiline
-                        className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed"
+                        className="text-xs text-slate-400 leading-relaxed"
                       />
                     </div>
                   </div>

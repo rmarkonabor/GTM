@@ -42,7 +42,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Segments & Positioning</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Segments & Positioning</h1>
       <p className="text-slate-500 text-sm mb-6">
         Market segments with targeted positioning strategy for each.
       </p>
@@ -67,9 +67,9 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
           return (
             <div className="space-y-6">
               {segments.map((seg, i) => (
-                <div key={seg.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+                <div key={seg.id} className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
                   {/* Header */}
-                  <div className="p-6 pb-4 border-b border-slate-100 dark:border-white/5">
+                  <div className="p-6 pb-4 border-b border-white/5">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3 flex-1">
                         <span className="text-xs font-bold text-slate-400">#{i + 1}</span>
@@ -78,7 +78,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           value={seg.name}
                           editMode={editMode}
                           onSave={(v) => update(seg.id, { name: v })}
-                          className="font-bold text-slate-900 dark:text-white"
+                          className="font-bold text-white"
                         />
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
@@ -101,7 +101,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                         editMode={editMode}
                         onSave={(v) => update(seg.id, { rationale: v })}
                         multiline
-                        className="text-sm text-slate-500 dark:text-slate-400"
+                        className="text-sm text-slate-400"
                       />
                     </div>
 
@@ -115,7 +115,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           items={seg.geographies ?? []}
                           onSave={(v) => update(seg.id, { geographies: v })}
                           editMode={editMode}
-                          chipClass="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                          chipClass="bg-blue-900/20 text-blue-400"
                         />
                       </div>
                       <div>
@@ -127,7 +127,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           items={seg.industries ?? []}
                           onSave={(v) => update(seg.id, { industries: v })}
                           editMode={editMode}
-                          chipClass="bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
+                          chipClass="bg-violet-900/20 text-violet-400"
                         />
                       </div>
                     </div>
@@ -135,7 +135,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
 
                   {/* Positioning */}
                   {seg.positioning && (
-                    <div className="p-6 space-y-5 bg-slate-50/50 dark:bg-slate-800/20">
+                    <div className="p-6 space-y-5 bg-slate-800/20">
                       <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                         <Target className="h-3.5 w-3.5" />
                         Positioning Strategy
@@ -152,7 +152,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           editMode={editMode}
                           onSave={(v) => updatePositioning(seg.id, { messagingHook: v })}
                           multiline
-                          className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                          className="text-sm font-medium text-slate-200"
                         />
                       </div>
 
@@ -191,7 +191,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           editMode={editMode}
                           onSave={(v) => updatePositioning(seg.id, { ourAngle: v })}
                           multiline
-                          className="text-sm text-slate-600 dark:text-slate-400"
+                          className="text-sm text-slate-400"
                         />
                       </div>
 
@@ -202,7 +202,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           value={seg.positioning.ctaApproach}
                           editMode={editMode}
                           onSave={(v) => updatePositioning(seg.id, { ctaApproach: v })}
-                          className="text-sm text-slate-600 dark:text-slate-400"
+                          className="text-sm text-slate-400"
                         />
                       </div>
                     </div>

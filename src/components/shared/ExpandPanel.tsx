@@ -95,7 +95,7 @@ export function ExpandPanel({ projectId, stepName, label, placeholder, onExpande
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={running}
-          className="dark:bg-slate-800 dark:border-white/20 dark:text-white text-sm"
+          className="bg-slate-800 border-white/20 text-white text-sm"
         />
         <Button
           variant="outline"

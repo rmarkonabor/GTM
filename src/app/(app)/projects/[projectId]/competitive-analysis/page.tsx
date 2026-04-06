@@ -22,7 +22,7 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Competitor Analysis</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Competitor Analysis</h1>
       <p className="text-slate-500 text-sm mb-6">Competitor comparison by segment. See where you win and where they win.</p>
 
       <StepPageWrapper projectId={projectId} stepName="COMPETITIVE" stepLabel="Competitor Analysis">
@@ -38,15 +38,15 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
           return (
             <div className="space-y-6">
               {competitors.map((c) => (
-                <div key={c.domain} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+                <div key={c.domain} className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
                   {/* Header */}
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-white/10 flex items-start justify-between">
+                  <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between">
                     <div className="flex-1">
                       <EditableText
                         value={c.name}
                         editMode={editMode}
                         onSave={(v) => update(c.domain, { name: v })}
-                        className="font-bold text-slate-900 dark:text-white text-lg"
+                        className="font-bold text-white text-lg"
                       />
                       <div className="flex items-center gap-3 mt-1">
                         <a
@@ -63,7 +63,7 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs">{c.targetSegment}</Badge>
+                      <Badge className="bg-slate-800 text-slate-300 text-xs">{c.targetSegment}</Badge>
                       {c.pricingModel && <Badge variant="outline" className="text-xs">{c.pricingModel}</Badge>}
                       {editMode && (
                         <button
@@ -83,7 +83,7 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
                         editMode={editMode}
                         onSave={(v) => update(c.domain, { valueProp: v })}
                         multiline
-                        className="text-sm text-slate-600 dark:text-slate-400 italic"
+                        className="text-sm text-slate-400 italic"
                       />
                     </div>
 

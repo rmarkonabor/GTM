@@ -21,7 +21,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Target Markets</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Target Markets</h1>
       <p className="text-slate-500 text-sm mb-6">
         Top market opportunities ranked by priority.
       </p>
@@ -39,7 +39,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
           return (
             <div className="space-y-6">
               {markets.map((market, i) => (
-                <div key={market.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
+                <div key={market.id} className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
                   <div className="p-6 pb-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
@@ -48,7 +48,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                           value={market.name}
                           editMode={editMode}
                           onSave={(v) => update(market.id, { name: v })}
-                          className="text-lg font-bold text-slate-900 dark:text-white"
+                          className="text-lg font-bold text-white"
                         />
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
@@ -67,13 +67,13 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4">
+                    <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
                       <EditableText
                         value={market.whyRightMarket}
                         editMode={editMode}
                         onSave={(v) => update(market.id, { whyRightMarket: v })}
                         multiline
-                        className="text-sm text-slate-600 dark:text-slate-400"
+                        className="text-sm text-slate-400"
                       />
                     </div>
 
@@ -81,7 +81,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
-                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Urgent Problems</h4>
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Urgent Problems</h4>
                         </div>
                         <EditableList
                           items={market.urgentProblems ?? []}
@@ -93,7 +93,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <Info className="h-3.5 w-3.5 text-yellow-400" />
-                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Important Problems</h4>
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Important Problems</h4>
                         </div>
                         <EditableList
                           items={market.importantProblems ?? []}
@@ -105,7 +105,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <TrendingUp className="h-3.5 w-3.5 text-blue-400" />
-                          <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Macro Trends</h4>
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Macro Trends</h4>
                         </div>
                         <EditableList
                           items={market.macroTrends ?? []}

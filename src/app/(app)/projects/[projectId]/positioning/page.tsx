@@ -22,7 +22,7 @@ export default function PositioningPage({ params }: { params: Promise<{ projectI
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Positioning</h1>
+      <h1 className="text-2xl font-bold text-white mb-1">Positioning</h1>
       <p className="text-slate-500 text-sm mb-6">
         How you differentiate vs. competitors in each segment.
       </p>
@@ -51,15 +51,15 @@ export default function PositioningPage({ params }: { params: Promise<{ projectI
                   value={pos.uniqueValueProp}
                   editMode={editMode}
                   onSave={(v) => patch({ uniqueValueProp: v })}
-                  className="text-xl font-bold text-slate-900 dark:text-white"
+                  className="text-xl font-bold text-white"
                 />
               </div>
 
               {/* Positioning statement */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6">
+              <div className="bg-slate-900 border border-white/10 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Lightbulb className="h-4 w-4 text-violet-400" />
-                  <h3 className="font-semibold text-slate-900 dark:text-white">Positioning Statement</h3>
+                  <h3 className="font-semibold text-white">Positioning Statement</h3>
                   <span className="text-xs text-slate-400">(Geoffrey Moore format)</span>
                 </div>
                 <EditableText
@@ -67,34 +67,34 @@ export default function PositioningPage({ params }: { params: Promise<{ projectI
                   editMode={editMode}
                   onSave={(v) => patch({ positioningStatement: v })}
                   multiline
-                  className="text-slate-600 dark:text-slate-400 italic leading-relaxed"
+                  className="text-slate-400 italic leading-relaxed"
                 />
               </div>
 
               {/* Differentiation points */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-6">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Differentiation Points</h3>
+              <div className="bg-slate-900 border border-white/10 rounded-xl p-6">
+                <h3 className="font-semibold text-white mb-3">Differentiation Points</h3>
                 <EditableList
                   items={pos.differentiationPoints ?? []}
                   onSave={(v) => patch({ differentiationPoints: v })}
                   editMode={editMode}
                   dotColor="bg-violet-400"
-                  textClass="text-sm text-slate-600 dark:text-slate-400"
+                  textClass="text-sm text-slate-400"
                 />
               </div>
 
               {/* By segment */}
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">By Segment</h3>
+                <h3 className="font-semibold text-white mb-4">By Segment</h3>
                 <div className="space-y-3">
                   {pos.bySegment.map((seg) => (
-                    <div key={seg.segmentName} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+                    <div key={seg.segmentName} className="bg-slate-900 border border-white/10 rounded-xl p-5">
                       <div className="flex items-start justify-between mb-1">
                         <EditableText
                           value={seg.segmentName}
                           editMode={editMode}
                           onSave={(v) => updateSegment(seg.segmentName, { segmentName: v })}
-                          className="font-semibold text-slate-900 dark:text-white"
+                          className="font-semibold text-white"
                         />
                         {editMode && (
                           <button
@@ -114,7 +114,7 @@ export default function PositioningPage({ params }: { params: Promise<{ projectI
                         editMode={editMode}
                         onSave={(v) => updateSegment(seg.segmentName, { differentiationAngle: v })}
                         multiline
-                        className="text-sm text-slate-600 dark:text-slate-400"
+                        className="text-sm text-slate-400"
                       />
                     </div>
                   ))}
