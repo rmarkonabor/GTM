@@ -55,23 +55,19 @@ function buildApolloFilters(
   return filters;
 }
 
-async function apolloRequest(
+async function apolloPost(
   apiKey: string,
-  filters: Record<string, unknown>,
-  perPage = 1
-): Promise<{ organizations_count?: number; people_count?: number }> {
-  const response = await fetch(`${APOLLO_API_URL}/mixed_people/search`, {
+  endpoint: string,
+  body: Record<string, unknown>
+): Promise<{ pagination?: { total_entries?: number } }> {
+  const response = await fetch(`${APOLLO_API_URL}${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
       "X-Api-Key": apiKey,
     },
-    body: JSON.stringify({
-      ...filters,
-      page: 1,
-      per_page: perPage,
-    }),
+    body: JSON.stringify({ ...body, page: 1, per_page: 1 }),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -93,24 +89,51 @@ async function apolloRequest(
   return response.json();
 }
 
+// Build company-level (accounts) filters — no persona fields
+function buildAccountFilters(firmographics: Firmographics): Record<string, unknown> {
+  const filters: Record<string, unknown> = {};
+
+  if (firmographics.companySize?.length) {
+    filters.organization_num_employees_ranges = firmographics.companySize.map((r) =>
+      r.replace("-", ",").replace("+", ",")
+    );
+  }
+
+  if (firmographics.geographies?.length) {
+    filters.organization_locations = firmographics.geographies;
+  }
+
+  if (firmographics.technologies?.length) {
+    filters.organization_technology_names = firmographics.technologies;
+  }
+
+  return filters;
+}
+
 export async function getMarketSize(
   apiKey: string,
   firmographics: Firmographics,
   persona?: BuyerPersona
 ): Promise<{ companies: number; contacts: number; filtersUsed: Record<string, unknown> }> {
-  const filters = buildApolloFilters(firmographics, persona);
+  const personaFilters = buildApolloFilters(firmographics, persona);
+  const accountFilters = buildAccountFilters(firmographics);
 
-  const data = await apolloRequest(apiKey, filters);
+  // Run both queries in parallel
+  const [peopleData, accountsData] = await Promise.all([
+    apolloPost(apiKey, "/mixed_people/search", personaFilters),
+    apolloPost(apiKey, "/accounts/search", accountFilters),
+  ]);
 
-  const companies = data.organizations_count ?? 0;
-  const contacts = data.people_count ?? 0;
+  // Apollo returns counts in pagination.total_entries
+  const contacts = peopleData.pagination?.total_entries ?? 0;
+  const companies = accountsData.pagination?.total_entries ?? 0;
 
-  return { companies, contacts, filtersUsed: filters };
+  return { companies, contacts, filtersUsed: personaFilters };
 }
 
 export async function testApolloKey(apiKey: string): Promise<boolean> {
   try {
-    await apolloRequest(apiKey, {}, 1);
+    await apolloPost(apiKey, "/accounts/search", {});
     return true;
   } catch (err) {
     if (err instanceof ApolloAuthError) return false;

@@ -36,6 +36,15 @@ interface Props {
   onApproved?: () => void;
 }
 
+async function safeJson(res: Response) {
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) {
+    const text = await res.text();
+    throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export function StepPageWrapper({ projectId, stepName, stepLabel, children, onApproved }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<StepData | null>(null);
@@ -50,7 +59,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   const fetchStep = useCallback(async () => {
     // cache: 'no-store' prevents browser caching stale status after approval
     const res = await fetch(`/api/projects/${projectId}`, { cache: "no-store" });
-    const data = await res.json();
+    const data = await safeJson(res);
     const found = data.project?.steps?.find((s: { stepName: string }) => s.stepName === stepName);
     return found ?? null;
   }, [projectId, stepName]);
@@ -82,7 +91,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/approve`, {
         method: "POST",
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to approve");
       toast.success("Step approved! Next step will start shortly.");
       // Optimistically flip to COMPLETE immediately — don't re-fetch because the
@@ -115,7 +124,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: editPrompt }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error?.message ?? "Failed to re-run step");
       toast.success("Step re-run complete. Review and approve when ready.");
       setEditPrompt("");
