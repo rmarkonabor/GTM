@@ -37,10 +37,10 @@ export async function POST(
       },
     });
 
-    // Send approval event to unblock Inngest workflow
+    // Trigger workflow to run the next step
     await inngest.send({
-      name: "gtm/step.approved",
-      data: { projectId, stepName },
+      name: "gtm/workflow.start",
+      data: { projectId },
     });
 
     return NextResponse.json({ success: true });

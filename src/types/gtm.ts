@@ -216,6 +216,23 @@ export type StepOutputMap = {
   MANIFESTO: ManifestoOutput;
 };
 
+// ─── Step result wrapper ─────────────────────────────────────────────────────
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUSD: number;
+  model: string;
+}
+
+export interface WorkflowStepResult<T> {
+  output: T;
+  usage: TokenUsage;
+}
+
+// ─── Workflow context ─────────────────────────────────────────────────────────
+
 export interface WorkflowContext {
   projectId: string;
   websiteUrl: string;

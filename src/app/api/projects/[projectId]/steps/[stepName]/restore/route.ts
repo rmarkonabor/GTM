@@ -8,7 +8,7 @@ import { errorResponse } from "@/lib/errors/handlers";
 import { z } from "zod";
 
 const STEP_ORDER = [
-  "RESEARCH", "INDUSTRY_PRIORITY", "ICP", "TARGET_MARKETS",
+  "RESEARCH", "INDUSTRY_PRIORITY", "TARGET_MARKETS", "ICP",
   "COMPETITIVE", "SEGMENTATION", "MARKET_SIZING", "POSITIONING", "MANIFESTO"
 ] as const;
 

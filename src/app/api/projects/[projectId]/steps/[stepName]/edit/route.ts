@@ -74,8 +74,16 @@ export async function POST(
     });
 
     let output: unknown;
+    let tokenUsage: unknown = null;
     try {
-      output = await stepFn(ctx, llmPreference, dbPreferences);
+      const result = await stepFn(ctx, llmPreference, dbPreferences);
+      // Step runners now return { output, usage } — handle both old and new shapes
+      if (result && typeof result === "object" && "output" in result && "usage" in result) {
+        output = result.output;
+        tokenUsage = result.usage;
+      } else {
+        output = result;
+      }
     } catch (err) {
       await prisma.projectStep.update({
         where: { projectId_stepName: { projectId, stepName: stepName as never } },
@@ -97,10 +105,14 @@ export async function POST(
       },
     });
 
-    // Update draftOutput, keep AWAITING_APPROVAL
+    // Update draftOutput and token usage, keep AWAITING_APPROVAL
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: stepName as never } },
-      data: { status: "AWAITING_APPROVAL", draftOutput: output as object },
+      data: {
+        status: "AWAITING_APPROVAL",
+        draftOutput: output as object,
+        ...(tokenUsage ? { tokenUsage: tokenUsage as object } : {}),
+      },
     });
 
     return NextResponse.json({ success: true, output });

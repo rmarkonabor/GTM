@@ -1,14 +1,17 @@
 export function buildICPPrompt(context: string, industries: object[]): string {
-  return `You are a senior GTM strategist. Based on the company profile and priority industry definitions below, create detailed ICPs (Ideal Customer Profiles) for each industry.
+  return `You are a senior GTM strategist. Based on the company profile, priority industries, AND target markets defined below, create detailed Ideal Customer Profiles (ICPs).
+
+The ICPs must be grounded in the target markets — each ICP should represent the ideal company within the context of those specific markets, not just a generic industry profile.
 
 ${context}
 
-Industries to create ICPs for:
+Priority industries (for reference):
 ${JSON.stringify(industries, null, 2)}
 
-For each industry, define:
-1. Firmographics — company-level filters that can be used directly in Apollo.io or ZoomInfo
-2. Buyer Personas — person-level targeting with Apollo-compatible seniority values
+Create one ICP per priority industry, shaped by the target markets above.
+For each ICP, define:
+1. Firmographics — Apollo.io/ZoomInfo-compatible company-level filters that match the target markets
+2. Buyer Personas — person-level targeting for the decision makers in those markets
 
 Return JSON:
 {

@@ -1,7 +1,9 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { WorkflowContext, CompetitiveAnalysisOutput } from "@/types/gtm";
+import { WorkflowContext, CompetitiveAnalysisOutput, WorkflowStepResult } from "@/types/gtm";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { buildStepContext } from "../context-builder";
 import { buildCompetitivePrompt } from "@/lib/ai/prompts/competitive";
 
@@ -26,14 +28,24 @@ const schema = z.object({
 export async function runCompetitive(
   ctx: WorkflowContext,
   llm: { provider: string; apiKey: string }
-): Promise<CompetitiveAnalysisOutput> {
+): Promise<WorkflowStepResult<CompetitiveAnalysisOutput>> {
   const context = buildStepContext(ctx);
   let prompt = buildCompetitivePrompt(context, ctx.businessType);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
   }
+  const modelId = getModelForTask(llm.provider as "openai" | "anthropic" | "google", "competitive-analysis");
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "competitive-analysis");
 
-  const { object } = await generateObject({ model, schema, prompt });
-  return object as CompetitiveAnalysisOutput;
+  const { object, usage } = await generateObject({ model, schema, prompt });
+  return {
+    output: object as CompetitiveAnalysisOutput,
+    usage: {
+      promptTokens: usage.inputTokens ?? 0,
+      completionTokens: usage.outputTokens ?? 0,
+      totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      estimatedCostUSD: calculateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
+      model: modelId,
+    },
+  };
 }
