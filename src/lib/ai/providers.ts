@@ -26,7 +26,7 @@ export function getLanguageModel(
       // of output_config.format — the latter rejects propertyNames and other JSON
       // schema keywords that Zod v4 can generate.
       return wrapLanguageModel({
-        model: anthropic(modelId) as LanguageModel,
+        model: anthropic(modelId),
         middleware: defaultSettingsMiddleware({
           settings: {
             providerOptions: {
