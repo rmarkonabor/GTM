@@ -40,5 +40,29 @@ export async function GET() {
     results.session = `ERROR: ${(e as Error).message}`;
   }
 
+  // Test 5: ProjectStep with draftOutput
+  try {
+    const step = await prisma.projectStep.findFirst({ select: { id: true, draftOutput: true } });
+    results.draftOutputQuery = step ? "ok" : "no rows";
+  } catch (e) {
+    results.draftOutputQuery = `ERROR: ${(e as Error).message}`;
+  }
+
+  // Test 6: ProjectStepVersion table
+  try {
+    const count = await prisma.projectStepVersion.count();
+    results.versionCount = count;
+  } catch (e) {
+    results.versionTable = `ERROR: ${(e as Error).message}`;
+  }
+
+  // Test 7: Full layout query (project with steps)
+  try {
+    const project = await prisma.project.findFirst({ include: { steps: true } });
+    results.layoutQuery = project ? `ok - ${project.steps.length} steps` : "no projects";
+  } catch (e) {
+    results.layoutQuery = `ERROR: ${(e as Error).message}`;
+  }
+
   return NextResponse.json(results);
 }

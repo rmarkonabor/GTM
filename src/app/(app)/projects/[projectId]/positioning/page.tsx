@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Lightbulb, Target, Users } from "lucide-react";
 
@@ -12,8 +14,8 @@ interface PositioningOutput {
   }>;
 }
 
-export default async function PositioningPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function PositioningPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { ExternalLink, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +16,8 @@ interface Competitor {
   pricingModel?: string;
 }
 
-export default async function CompetitiveAnalysisPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>

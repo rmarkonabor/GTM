@@ -1,3 +1,5 @@
+"use client";
+import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { Quote, Zap } from "lucide-react";
 
@@ -17,8 +19,8 @@ interface ManifestoOutput {
   messagingPillars: MessagingPillar[];
 }
 
-export default async function ManifestoPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params;
+export default function ManifestoPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
 
   return (
     <div>
