@@ -65,9 +65,10 @@ async function apolloPost(
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
+      // Apollo v1 accepts the key via header or body; include both for reliability
       "X-Api-Key": apiKey,
     },
-    body: JSON.stringify({ ...body, page: 1, per_page: 1 }),
+    body: JSON.stringify({ ...body, api_key: apiKey, page: 1, per_page: 1 }),
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -119,9 +120,10 @@ export async function getMarketSize(
   const accountFilters = buildAccountFilters(firmographics);
 
   // Run both queries in parallel
+  // People count: /mixed_people/search; Company count: /organizations/search
   const [peopleData, accountsData] = await Promise.all([
     apolloPost(apiKey, "/mixed_people/search", personaFilters),
-    apolloPost(apiKey, "/accounts/search", accountFilters),
+    apolloPost(apiKey, "/organizations/search", accountFilters),
   ]);
 
   // Apollo returns counts in pagination.total_entries
@@ -133,7 +135,7 @@ export async function getMarketSize(
 
 export async function testApolloKey(apiKey: string): Promise<boolean> {
   try {
-    await apolloPost(apiKey, "/accounts/search", {});
+    await apolloPost(apiKey, "/organizations/search", {});
     return true;
   } catch (err) {
     if (err instanceof ApolloAuthError) return false;

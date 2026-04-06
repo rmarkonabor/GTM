@@ -40,21 +40,8 @@ export async function runMarketSizing(
         fetchedAt: new Date().toISOString(),
       });
     } catch (err) {
-      const { ApolloAuthError, ApolloRateLimitError } = await import("@/lib/errors/types");
-      if (err instanceof ApolloAuthError || err instanceof ApolloRateLimitError) throw err;
-      results.push({
-        segmentId: icp.standardIndustry,
-        segmentName: icp.niche || icp.standardIndustry,
-        database: "apollo",
-        tam_companies: 0,
-        sam_companies: 0,
-        som_companies: 0,
-        tam_contacts: 0,
-        sam_contacts: 0,
-        som_contacts: 0,
-        filtersUsed: {},
-        fetchedAt: new Date().toISOString(),
-      });
+      // Always rethrow Apollo API errors — silent zeros are misleading
+      throw err;
     }
   }
 
