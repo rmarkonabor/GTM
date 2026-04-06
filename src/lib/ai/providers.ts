@@ -21,7 +21,10 @@ export function getLanguageModel(
     }
     case "anthropic": {
       const anthropic = createAnthropic({ apiKey });
-      return anthropic(modelId) as LanguageModel;
+      // Use jsonTool mode to avoid Anthropic's output_config.format API which
+      // has a stricter JSON schema subset (rejects propertyNames and others).
+      // jsonTool uses tool-call-based structured output which is more permissive.
+      return anthropic(modelId, { structuredOutputMode: "jsonTool" }) as LanguageModel;
     }
     case "google": {
       const google = createGoogleGenerativeAI({ apiKey });
