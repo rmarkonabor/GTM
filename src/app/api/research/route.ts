@@ -9,6 +9,8 @@ import { buildResearchPrompt } from "@/lib/ai/prompts/research";
 import { safeDecrypt } from "@/lib/crypto";
 import { generateText } from "ai";
 import { LLMPreference } from "@/types/gtm";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { z } from "zod";
 
 const schema = z.object({ projectId: z.string() });
@@ -56,9 +58,10 @@ export async function POST(req: NextRequest) {
     const scrapedContent = await scrapeUrl(project.websiteUrl);
 
     // Run LLM analysis
+    const modelId = getModelForTask(llm.provider, "research-enrichment");
     const model = getLanguageModel(llm.provider, llm.apiKey, "research-enrichment");
     const prompt = buildResearchPrompt(project.websiteUrl, scrapedContent);
-    const { text } = await generateText({ model, prompt, maxOutputTokens: 2000 });
+    const { text, usage } = await generateText({ model, prompt, maxOutputTokens: 2000 });
 
     // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -90,12 +93,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const tokenUsage = {
+      promptTokens: usage.inputTokens ?? 0,
+      completionTokens: usage.outputTokens ?? 0,
+      totalTokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0),
+      estimatedCostUSD: calculateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
+      model: modelId,
+    };
+
     // Save as draft, await approval (same pattern as workflow steps)
     await prisma.projectStep.update({
       where: { projectId_stepName: { projectId, stepName: "RESEARCH" } },
       data: {
         status: "AWAITING_APPROVAL",
         draftOutput: { companyProfile, questionsNeeded } as object,
+        tokenUsage: tokenUsage as object,
       },
     });
 

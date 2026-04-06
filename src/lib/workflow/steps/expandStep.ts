@@ -67,24 +67,6 @@ Return ONLY JSON, no markdown.`;
 
 // ─── Expand Target Markets ────────────────────────────────────────────────────
 
-const firmographicsSchema = z.object({
-  companySize: z.array(z.string()),
-  revenue: z.array(z.string()),
-  geographies: z.array(z.string()),
-  industries: z.array(z.string()),
-  technologies: z.array(z.string()),
-  businessModels: z.array(z.string()),
-});
-
-const buyerPersonaSchema = z.object({
-  title: z.string(),
-  seniorities: z.array(z.string()),
-  departments: z.array(z.string()),
-  goals: z.array(z.string()),
-  challenges: z.array(z.string()),
-  triggerEvents: z.array(z.string()),
-});
-
 const expandMarketsSchema = z.object({
   markets: z.array(
     z.object({
@@ -95,8 +77,6 @@ const expandMarketsSchema = z.object({
       macroTrends: z.array(z.string()),
       whyRightMarket: z.string(),
       priorityScore: z.number(),
-      firmographics: firmographicsSchema,
-      buyerPersonas: z.array(buyerPersonaSchema),
     })
   ),
 });
@@ -121,7 +101,6 @@ Now generate full TargetMarket objects for each of these NEW markets the user wa
 ${JSON.stringify(newMarketNames, null, 2)}
 
 For each new market, follow the same quality and format as the existing ones.
-Each market must include market-specific firmographics and buyer personas.
 
 IDs should follow the pattern "market_${nextIndex}", "market_${nextIndex + 1}", etc.
 
@@ -135,17 +114,13 @@ Return JSON:
       "importantProblems": [...],
       "macroTrends": [...],
       "whyRightMarket": "...",
-      "priorityScore": 7,
-      "firmographics": { "companySize": [...], "revenue": [...], "geographies": [...], "industries": [...], "technologies": [...], "businessModels": [...] },
-      "buyerPersonas": [{ "title": "...", "seniorities": [...], "departments": [...], "goals": [...], "challenges": [...], "triggerEvents": [...] }]
+      "priorityScore": 7
     }
   ]
 }
 
 Rules:
-- companySize: Apollo ranges "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
-- seniorities: "owner" | "founder" | "c_suite" | "partner" | "vp" | "head" | "director" | "manager" | "senior" | "entry"
-- industries in firmographics: LinkedIn/Apollo standard names only
+- Market names should be specific enough to use in outreach (not just "SaaS companies")
 - Return ONLY JSON, no markdown.`;
 
   const model = getLanguageModel(llm.provider, llm.apiKey, "expand-step");
