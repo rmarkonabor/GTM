@@ -274,23 +274,31 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
                     <p className="font-semibold text-white">{seg.name}</p>
                     <p className="text-xs text-slate-500 capitalize">{seg.sizeCategory}</p>
                   </div>
-                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
-                    {seg.estimatedPriority.replace("-", " ").toUpperCase()}
-                  </span>
+                  {seg.estimatedPriority && (
+                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
+                      {seg.estimatedPriority.replace("-", " ").toUpperCase()}
+                    </span>
+                  )}
                 </div>
-                <div className="bg-slate-800/50 rounded-lg p-3">
-                  <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
-                  <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium mb-1.5">Our Angle</p>
-                  <p className="text-xs text-slate-400">{seg.positioning.ourAngle}</p>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {seg.positioning.keyPainPoints.slice(0, 3).map((pp) => (
-                    <span key={pp} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{pp}</span>
-                  ))}
-                </div>
+                {seg.positioning?.messagingHook && (
+                  <div className="bg-slate-800/50 rounded-lg p-3">
+                    <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
+                    <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
+                  </div>
+                )}
+                {seg.positioning?.ourAngle && (
+                  <div>
+                    <p className="text-xs text-slate-500 font-medium mb-1.5">Our Angle</p>
+                    <p className="text-xs text-slate-400">{seg.positioning.ourAngle}</p>
+                  </div>
+                )}
+                {seg.positioning?.keyPainPoints?.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {seg.positioning.keyPainPoints.slice(0, 3).map((pp) => (
+                      <span key={pp} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{pp}</span>
+                    ))}
+                  </div>
+                ) : null}
               </Card>
             ))}
           </div>
