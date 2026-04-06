@@ -122,7 +122,9 @@ enum StepName {
   INDUSTRY_PRIORITY
   ICP
   SEGMENTATION
+  MARKET_SIZING   // Deprecated — kept for DB compatibility
   COMPETITIVE
+  POSITIONING     // Deprecated — kept for DB compatibility
   MANIFESTO
 }
 
