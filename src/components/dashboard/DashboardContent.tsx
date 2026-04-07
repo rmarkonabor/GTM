@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
   CheckCircle2, TrendingUp, Globe, ChevronRight, Rocket, ChevronDown,
+  ExternalLink, MapPin, XCircle,
 } from "lucide-react";
 
 // ─── Types (exported for reuse) ────────────────────────────────────────────
@@ -56,9 +57,14 @@ interface ICP {
 
 interface Competitor {
   name: string;
+  domain?: string;
+  location?: string;
   valueProp: string;
-  targetSegment: string;
+  keyOfferings?: string[];
+  whereTheyWin?: string[];
   whereClientWins: string[];
+  targetSegment: string;
+  pricingModel?: string;
 }
 
 interface Segment {
@@ -355,33 +361,10 @@ function StrategyTab({
       {competitors?.length ? (
         <section>
           <SectionHeader icon={Swords} title="Competitive Landscape" />
-          <div className="overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-slate-900">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Competitor</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Market</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Their Play</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Where We Win</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitors.slice(0, 8).map((c, i) => (
-                  <tr key={i} className="border-b border-white/5 hover:bg-slate-800/30">
-                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{str(c.name)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{str(c.targetSegment)}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs max-w-xs">{str(c.valueProp)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {c.whereClientWins.slice(0, 2).map((w, i) => (
-                          <span key={i} className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">{str(w)}</span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {competitors.map((c, i) => (
+              <CompetitorCard key={i} competitor={c} />
+            ))}
           </div>
         </section>
       ) : null}
@@ -453,6 +436,106 @@ function ExecutionTab() {
           <p className="mt-8 text-xs text-slate-600">Coming soon</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Competitor Card ────────────────────────────────────────────────────────
+
+function CompetitorCard({ competitor: c }: { competitor: Competitor }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+      {/* Header — always visible */}
+      <button onClick={() => setOpen(!open)} className="w-full text-left p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <p className="font-semibold text-white">{str(c.name)}</p>
+              {c.pricingModel && (
+                <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/10">
+                  {str(c.pricingModel)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {c.domain && (
+                <span className="flex items-center gap-1 text-xs text-violet-400">
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  {str(c.domain)}
+                </span>
+              )}
+              {c.location && (
+                <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {str(c.location)}
+                </span>
+              )}
+              <span className="text-xs text-slate-600">{str(c.targetSegment)}</span>
+            </div>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-slate-500 shrink-0 mt-0.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+
+        {/* Value prop always shown */}
+        <p className="text-xs text-slate-400 mt-2 leading-relaxed text-left">{str(c.valueProp)}</p>
+      </button>
+
+      {/* Expanded detail */}
+      {open && (
+        <div className="border-t border-white/5 px-4 pb-4 pt-3 space-y-4">
+          {/* Key Offerings */}
+          {c.keyOfferings?.length ? (
+            <div>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Key Offerings</p>
+              <div className="flex flex-wrap gap-1.5">
+                {c.keyOfferings.map((o, i) => (
+                  <span key={i} className="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-white/5">
+                    {str(o)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Where They Win */}
+            {c.whereTheyWin?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" /> Where They Win
+                </p>
+                <ul className="space-y-1.5">
+                  {c.whereTheyWin.map((w, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-red-400 shrink-0" />
+                      <span className="text-xs text-slate-400">{str(w)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {/* Where We Win */}
+            {c.whereClientWins?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Where We Win
+                </p>
+                <ul className="space-y-1.5">
+                  {c.whereClientWins.map((w, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-xs text-slate-400">{str(w)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
