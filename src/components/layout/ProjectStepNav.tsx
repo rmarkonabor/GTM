@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, LayoutDashboard,
   Swords, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
-  ChevronLeft, Clock, Rocket
+  ChevronLeft, Clock
 } from "lucide-react";
 
 interface ProjectStep {
@@ -104,16 +104,6 @@ export function ProjectStepNav({ project }: { project: Project }) {
           />
         ))}
 
-        {/* Execution group */}
-        <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-          Execution
-        </p>
-        <StepLink
-          href={`/projects/${project.id}/cold-email`}
-          isActive={pathname === `/projects/${project.id}/cold-email`}
-          icon={Rocket}
-          label="Cold Email"
-        />
       </nav>
     </aside>
   );

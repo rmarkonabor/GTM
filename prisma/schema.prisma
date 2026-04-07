@@ -82,8 +82,6 @@ model Project {
   status         ProjectStatus @default(RESEARCHING)
   // Unique token for public sharing — null means not shared
   shareToken       String?       @unique
-  // JSON: { status, targetMarketName, steps, error, startedAt, completedAt }
-  coldEmailDraft     Json?
   // JSON array: [{ campaignId, name, targetMarketName, pushedAt }]
   smartleadCampaigns Json?
   steps              ProjectStep[]

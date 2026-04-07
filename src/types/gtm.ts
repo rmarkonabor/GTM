@@ -174,27 +174,6 @@ export interface ManifestoOutput {
   }>;
 }
 
-// ─── Cold Email ──────────────────────────────────────────────────────────────
-
-export interface EmailAnnotation {
-  part: "subject" | "opener" | "body" | "cta" | "closing";
-  metric: "open_rate" | "reply_rate" | "engagement" | "click_rate";
-  impact: string;
-}
-
-export interface SubjectLineOption {
-  text: string;
-  rationale: string;
-}
-
-export interface ColdEmail {
-  subject: string;
-  body: string;
-  waitDays: number;
-  angle: string;
-  annotations: EmailAnnotation[];
-}
-
 // ─── Step orchestration ──────────────────────────────────────────────────────
 
 export type StepOutputMap = {

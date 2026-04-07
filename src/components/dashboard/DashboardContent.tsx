@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
-  CheckCircle2, TrendingUp, Globe, ChevronRight, Rocket, ChevronDown,
-  ExternalLink, MapPin, XCircle, Loader2, Mail, RefreshCw, ArrowRight,
+  CheckCircle2, TrendingUp, Globe, ChevronRight, ChevronDown,
+  ExternalLink, MapPin, XCircle, Loader2, Mail, RefreshCw, Rocket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 // ─── Types (exported for reuse) ────────────────────────────────────────────
 
@@ -506,13 +505,6 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
               Refresh metrics
             </Button>
           )}
-          <Link href={`/projects/${project.id}/cold-email`}>
-            <Button size="sm" className="bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs h-8">
-              <Rocket className="h-3.5 w-3.5" />
-              New Sequence
-              <ArrowRight className="h-3 w-3" />
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -524,15 +516,10 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
       ) : campaigns.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center space-y-3">
           <Mail className="h-8 w-8 text-slate-700 mx-auto" />
-          <p className="text-slate-400 text-sm font-medium">No campaigns pushed yet</p>
+          <p className="text-slate-400 text-sm font-medium">No campaigns yet</p>
           <p className="text-slate-600 text-xs max-w-xs mx-auto">
-            Generate a cold email sequence and push it to Smartlead — it&apos;ll appear here with live metrics.
+            Campaigns pushed to Smartlead will appear here with live metrics.
           </p>
-          <Link href={`/projects/${project.id}/cold-email`}>
-            <Button size="sm" className="mt-2 bg-violet-600 hover:bg-violet-500 text-white gap-1.5 text-xs">
-              <Rocket className="h-3.5 w-3.5" /> Create your first sequence
-            </Button>
-          </Link>
         </div>
       ) : (
         <div className="space-y-3">
