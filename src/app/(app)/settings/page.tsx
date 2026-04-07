@@ -16,6 +16,7 @@ const LLM_PROVIDERS = [
 
 interface SettingsData {
   llm: { provider: string; apiKey: string } | null;
+  smartlead: { apiKey: string } | null;
 }
 
 function KeyField({
@@ -60,9 +61,11 @@ function KeyField({
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingLlm, setSavingLlm] = useState(false);
+  const [savingSl, setSavingSl] = useState(false);
   const [llmProvider, setLlmProvider] = useState("openai");
   const [llmKey, setLlmKey] = useState("");
+  const [slKey, setSlKey] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -72,16 +75,19 @@ export default function SettingsPage() {
           setLlmProvider(data.llm.provider);
           setLlmKey(data.llm.apiKey);
         }
+        if (data.smartlead) {
+          setSlKey(data.smartlead.apiKey);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const save = async () => {
+  const saveLlm = async () => {
     if (!llmKey) {
       toast.warning("Enter an API key to save.");
       return;
     }
-    setSaving(true);
+    setSavingLlm(true);
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -90,11 +96,33 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message);
-      toast.success("Settings saved.");
+      toast.success("LLM settings saved.");
     } catch (err) {
       toast.error((err as Error).message ?? "Failed to save settings.");
     } finally {
-      setSaving(false);
+      setSavingLlm(false);
+    }
+  };
+
+  const saveSmartlead = async () => {
+    if (!slKey) {
+      toast.warning("Enter a Smartlead API key to save.");
+      return;
+    }
+    setSavingSl(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smartlead: { apiKey: slKey } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message);
+      toast.success("Smartlead API key saved.");
+    } catch (err) {
+      toast.error((err as Error).message ?? "Failed to save settings.");
+    } finally {
+      setSavingSl(false);
     }
   };
 
@@ -153,16 +181,43 @@ export default function SettingsPage() {
             placeholder="sk-..."
             hint="Tiered routing automatically uses the best model for complex tasks (research, ICP, competitive) and a cheaper model for simple ones."
           />
+
+          <Button
+            onClick={saveLlm}
+            disabled={savingLlm}
+            className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 py-5 text-sm font-semibold shadow-lg shadow-violet-900/30 transition-all duration-200"
+          >
+            {savingLlm ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {savingLlm ? "Saving…" : "Save LLM Settings"}
+          </Button>
         </section>
 
-        <Button
-          onClick={save}
-          disabled={saving}
-          className="w-full bg-violet-600 hover:bg-violet-500 text-white gap-2 py-5 text-sm font-semibold shadow-lg shadow-violet-900/30 transition-all duration-200"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? "Saving…" : "Save Settings"}
-        </Button>
+        {/* Smartlead card */}
+        <section className="bg-slate-900 border border-white/10 rounded-xl p-6 space-y-5 shadow-xl shadow-slate-950/50">
+          <div className="flex items-center gap-2 pb-1 border-b border-white/8">
+            <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <h2 className="font-semibold text-white">Smartlead</h2>
+          </div>
+
+          <KeyField
+            label="API Key"
+            value={slKey}
+            onChange={setSlKey}
+            placeholder="sl-..."
+            hint="Used to create campaigns and email sequences from your GTM strategy. Find your API key in Smartlead → Settings → API."
+          />
+
+          <Button
+            onClick={saveSmartlead}
+            disabled={savingSl}
+            className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2 py-5 text-sm font-semibold shadow-lg shadow-emerald-900/30 transition-all duration-200"
+          >
+            {savingSl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {savingSl ? "Saving…" : "Save Smartlead Key"}
+          </Button>
+        </section>
       </div>
     </div>
   );

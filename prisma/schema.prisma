@@ -57,7 +57,9 @@ model User {
   // Encrypted JSON: { provider: "openai"|"anthropic"|"google", apiKey: string }
   llmPreference String?   @db.Text
   // Deprecated: was used for Apollo/Clay API keys
-  dbPreferences String?   @db.Text
+  dbPreferences       String?   @db.Text
+  // Encrypted JSON: { apiKey: string }
+  smartleadPreference String?   @db.Text
   accounts      Account[]
   sessions      Session[]
   projects      Project[]

@@ -9,6 +9,7 @@ export type TaskName =
   | "segmentation"
   | "competitive-analysis"
   | "manifesto"
+  | "cold-email"
   | "expand-step"
   | "format-for-export"
   | "step-summary"
@@ -24,6 +25,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "segmentation": "MEDIUM",
   "competitive-analysis": "COMPLEX",
   "manifesto": "COMPLEX",
+  "cold-email": "COMPLEX",
   "expand-step": "COMPLEX",
   "format-for-export": "SIMPLE",
   "step-summary": "SIMPLE",

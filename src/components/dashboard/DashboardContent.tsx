@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
   CheckCircle2, TrendingUp, Globe, ChevronRight, Rocket, ChevronDown,
+  ExternalLink, MapPin, XCircle, Loader2, Sparkles, AlertTriangle, Send,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { EmailStep, EmailAnnotation } from "@/types/gtm";
+import { checkSpam } from "@/lib/email/spam-words";
 
 // ─── Types (exported for reuse) ────────────────────────────────────────────
 
@@ -205,7 +213,7 @@ export function DashboardContent({ project, readOnly, heroExtra }: DashboardCont
 
       {/* Tab content */}
       {(!readOnly && activeTab === "execution") ? (
-        <ExecutionTab />
+        <ExecutionTab project={project} />
       ) : (
         <StrategyTab
           profile={profile}
@@ -414,45 +422,276 @@ function StrategyTab({
 
 // ─── Execution Tab ──────────────────────────────────────────────────────────
 
-function ExecutionTab() {
+const METRIC_LABEL: Record<EmailAnnotation["metric"], string> = {
+  open_rate: "Open Rate",
+  reply_rate: "Reply Rate",
+  engagement: "Engagement",
+  click_rate: "Click Rate",
+};
+
+const METRIC_COLOR: Record<EmailAnnotation["metric"], string> = {
+  open_rate: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  reply_rate: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  engagement: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  click_rate: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+};
+
+function SpamWarning({ text }: { text: string }) {
+  const matches = checkSpam(text);
+  if (!matches.length) return null;
   return (
-    <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-violet-950/20 p-12 text-center">
-        <div className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 h-56 w-56 rounded-full bg-violet-500/5 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-1/4 h-32 w-32 rounded-full bg-purple-500/5 blur-3xl" />
+    <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-400">
+      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+      <span>
+        Spam words detected: {matches.map((m) => <strong key={m.word} className="font-semibold">&ldquo;{m.word}&rdquo;</strong>).reduce<React.ReactNode[]>((acc, el, i) => i === 0 ? [el] : [...acc, ", ", el], [])}
+        {" "}— may reduce deliverability.
+      </span>
+    </div>
+  );
+}
 
-        <div className="relative">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/25 flex items-center justify-center mb-5 shadow-xl shadow-violet-900/20">
-            <Rocket className="h-7 w-7 text-violet-400" />
-          </div>
+function EmailEditor({
+  step,
+  index,
+  onChange,
+}: {
+  step: EmailStep;
+  index: number;
+  onChange: (updated: EmailStep) => void;
+}) {
+  const combined = step.subject + " " + step.body;
 
-          <h2 className="text-2xl font-bold text-white mb-3">Execution Hub</h2>
-          <p className="text-slate-400 text-sm max-w-md mx-auto mb-8 leading-relaxed">
-            Turn your GTM strategy into action. Execution tools will help you generate outreach sequences, content plans, campaign briefs, and more — all powered by your strategy data.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {[
-              "Outreach Sequences",
-              "Content Calendar",
-              "Campaign Briefs",
-              "Sales Playbook",
-              "Email Templates",
-              "Landing Pages",
-            ].map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-slate-400"
-              >
-                <span className="h-1 w-1 rounded-full bg-violet-500" />
-                {label}
+  return (
+    <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-slate-800/40">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-white">Step {index + 1}</span>
+          <span className="text-xs text-slate-500">·</span>
+          <span className="text-xs text-slate-400">Day {step.waitDays}</span>
+        </div>
+        {step.annotations.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {step.annotations.map((a, i) => (
+              <span key={i} className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${METRIC_COLOR[a.metric]}`} title={a.impact}>
+                {METRIC_LABEL[a.metric]}
               </span>
             ))}
           </div>
-
-          <p className="mt-8 text-xs text-slate-600">Coming soon</p>
-        </div>
+        )}
       </div>
+
+      <div className="p-4 space-y-3">
+        {/* Subject */}
+        <div>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Subject line
+            {step.subject.includes("{") && (
+              <span className="ml-2 normal-case text-violet-400 font-normal">spintax</span>
+            )}
+          </label>
+          <Input
+            value={step.subject}
+            onChange={(e) => onChange({ ...step, subject: e.target.value })}
+            className="bg-slate-800 border-white/10 text-white text-sm font-medium"
+          />
+          {step.annotations.filter((a) => a.part === "subject").map((a, i) => (
+            <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">{a.impact}</p>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Body
+          </label>
+          <Textarea
+            value={step.body}
+            onChange={(e) => onChange({ ...step, body: e.target.value })}
+            rows={6}
+            className="bg-slate-800 border-white/10 text-white text-sm resize-none font-mono"
+          />
+          {step.annotations.filter((a) => a.part !== "subject").map((a, i) => (
+            <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">
+              <span className="text-slate-600 font-semibold uppercase">{a.part}</span>{" "}— {a.impact}
+            </p>
+          ))}
+        </div>
+
+        <SpamWarning text={combined} />
+      </div>
+    </div>
+  );
+}
+
+function ExecutionTab({ project }: { project: DashboardProject }) {
+  const stepMap = buildStepMap(project.steps);
+  const markets = (stepMap.TARGET_MARKETS as { markets: { name: string }[] } | undefined)?.markets ?? [];
+
+  const [selectedMarket, setSelectedMarket] = useState<string>("");
+  const [generating, setGenerating] = useState(false);
+  const [emailSteps, setEmailSteps] = useState<EmailStep[]>([]);
+  const [campaignName, setCampaignName] = useState("");
+  const [pushing, setPushing] = useState(false);
+
+  // Debounced spam check: re-runs whenever emailSteps change
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      // spam check is done inline in SpamWarning — no extra state needed
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [emailSteps]);
+
+  const handleGenerate = useCallback(async () => {
+    if (!selectedMarket) { toast.warning("Select a target market first."); return; }
+    setGenerating(true);
+    setEmailSteps([]);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/cold-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetMarketName: selectedMarket }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message ?? "Failed to generate emails");
+      setEmailSteps(data.steps);
+      setCampaignName(`${project.companyProfile?.name ?? "Campaign"} — ${selectedMarket} Sequence`);
+      toast.success("Email sequence generated!");
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setGenerating(false);
+    }
+  }, [selectedMarket, project.id, project.companyProfile?.name]);
+
+  const handlePush = useCallback(async () => {
+    if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
+    setPushing(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}/cold-email/push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignName,
+          steps: emailSteps.map((s) => ({ subject: s.subject, body: s.body, waitDays: s.waitDays })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message ?? "Failed to create campaign");
+      toast.success(`Campaign created! ID: ${data.campaignId}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setPushing(false);
+    }
+  }, [campaignName, emailSteps, project.id]);
+
+  if (markets.length === 0) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center">
+        <Rocket className="h-8 w-8 text-slate-600 mx-auto mb-3" />
+        <p className="text-slate-400 text-sm">Complete the Target Markets step to unlock the cold email generator.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cold Email Generator */}
+      <div className="rounded-2xl border border-white/10 bg-slate-900 p-6 space-y-5">
+        <div className="flex items-center gap-2 pb-1 border-b border-white/8">
+          <Sparkles className="h-4 w-4 text-violet-400" />
+          <h2 className="font-semibold text-white">Cold Email Sequence Generator</h2>
+        </div>
+
+        <p className="text-slate-400 text-sm leading-relaxed">
+          Pick a target market and generate a 3-step cold email sequence grounded in your GTM strategy. Edit inline before pushing to Smartlead.
+        </p>
+
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="text-xs text-slate-400 block mb-1.5">Target Market</label>
+            <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+              <SelectTrigger className="bg-slate-800 border-white/15 text-white">
+                <SelectValue placeholder="Select a market…" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-white/15">
+                {markets.map((m) => (
+                  <SelectItem key={m.name} value={m.name} className="text-white focus:bg-violet-600/20 focus:text-violet-300">
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            onClick={handleGenerate}
+            disabled={generating || !selectedMarket}
+            className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shrink-0"
+          >
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {generating ? "Generating…" : "Generate Sequence"}
+          </Button>
+        </div>
+
+        {/* Annotation legend */}
+        {emailSteps.length === 0 && !generating && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {(Object.keys(METRIC_LABEL) as EmailAnnotation["metric"][]).map((m) => (
+              <span key={m} className={`text-[10px] px-2.5 py-1 rounded-full border ${METRIC_COLOR[m]}`}>
+                {METRIC_LABEL[m]}
+              </span>
+            ))}
+            <span className="text-[10px] text-slate-600 self-center ml-1">— metric impact annotations</span>
+          </div>
+        )}
+      </div>
+
+      {/* Email editors */}
+      {emailSteps.length > 0 && (
+        <>
+          <div className="space-y-4">
+            {emailSteps.map((step, i) => (
+              <EmailEditor
+                key={i}
+                step={step}
+                index={i}
+                onChange={(updated) =>
+                  setEmailSteps((prev) => prev.map((s, idx) => idx === i ? updated : s))
+                }
+              />
+            ))}
+          </div>
+
+          {/* Push to Smartlead */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-emerald-400" />
+              <h3 className="font-semibold text-white text-sm">Push to Smartlead</h3>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-1.5">Campaign Name</label>
+              <Input
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                className="bg-slate-800 border-white/10 text-white text-sm"
+                placeholder="My Campaign"
+              />
+            </div>
+            <Button
+              onClick={handlePush}
+              disabled={pushing || !campaignName.trim()}
+              className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
+            >
+              {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {pushing ? "Creating campaign…" : "Create Campaign on Smartlead"}
+            </Button>
+            <p className="text-xs text-slate-600">Creates the campaign + 3 sequence steps. No leads are added.</p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
