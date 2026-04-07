@@ -338,15 +338,17 @@ export default function ColdEmailPage() {
       if (val) next[key] = val;
     }
     setEmails(next);
-    setCampaignName(`${companyName} — ${d.targetMarketName} Sequence`);
+    // Campaign name is set by the auto-update effect once companyName resolves
   }
 
-  // Auto-update campaign name
+  // Auto-update campaign name whenever we have all the pieces.
+  // Deliberately no !isComplete guard — companyName arrives async (separate fetch)
+  // so we need this to fire even after draft is already loaded.
   useEffect(() => {
-    if (selectedMarket && companyName && !isComplete) {
+    if (companyName && selectedMarket) {
       setCampaignName(`${companyName} — ${selectedMarket} Sequence`);
     }
-  }, [selectedMarket, companyName, isComplete]);
+  }, [companyName, selectedMarket]);
 
   // Polling
   useEffect(() => {

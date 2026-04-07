@@ -36,7 +36,6 @@ export async function POST(
         coldEmailDraft: {
           status: "PENDING",
           targetMarketName,
-          steps: [],
           startedAt: new Date().toISOString(),
         },
       },
