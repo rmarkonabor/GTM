@@ -78,8 +78,8 @@ export default function IndustryPriorityPage({ params }: { params: Promise<{ pro
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge className={`border ${FIT_COLORS[ind.estimatedMarketFit] ?? ""}`}>
-                        {ind.estimatedMarketFit} fit
+                      <Badge className={`border ${FIT_COLORS[String(ind.estimatedMarketFit ?? "")] ?? ""}`}>
+                        {String(ind.estimatedMarketFit ?? "")} fit
                       </Badge>
                       {editMode && (
                         <button

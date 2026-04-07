@@ -56,7 +56,7 @@ export default function ResearchPage({ params }: { params: Promise<{ projectId: 
                     className="text-xl font-bold text-white"
                   />
                   <Badge className="bg-violet-500/10 text-violet-400 capitalize shrink-0 ml-3">
-                    {cp.businessType?.replace("_", " ")}
+                    {String(cp.businessType ?? "").replace("_", " ")}
                   </Badge>
                 </div>
                 <EditableText

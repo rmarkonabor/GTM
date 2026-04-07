@@ -240,7 +240,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
                 <span className={usage.estimatedCostUSD > 0 ? "text-slate-400" : "text-slate-600"}>
                   {usage.estimatedCostUSD > 0 ? formatCost(usage.estimatedCostUSD) : "free"}
                 </span>
-                <span className="text-slate-700">{usage.model}</span>
+                <span className="text-slate-700">{String(usage.model ?? "")}</span>
               </div>
             )}
           </div>
