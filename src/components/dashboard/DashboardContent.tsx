@@ -461,10 +461,16 @@ function CompetitorCard({ competitor: c }: { competitor: Competitor }) {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               {c.domain && (
-                <span className="flex items-center gap-1 text-xs text-violet-400">
+                <a
+                  href={`https://${str(c.domain)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 hover:underline"
+                >
                   <ExternalLink className="h-3 w-3 shrink-0" />
                   {str(c.domain)}
-                </span>
+                </a>
               )}
               {c.location && (
                 <span className="flex items-center gap-1 text-xs text-slate-500">
