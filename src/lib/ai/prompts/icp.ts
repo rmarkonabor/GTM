@@ -26,20 +26,22 @@ CRITICAL — Each ICP must include:
    Examples: "HR Tech", "Legal Tech", "Fintech for SMBs", "Healthcare SaaS", "Construction Tech"
    (This is how you describe the space in outreach copy)
 
-3. keywords: 5–10 HIGHLY SPECIFIC keywords that buyers in this niche actually search for, use daily, or identify with.
-   These are critical for targeting — they power search filters, ad targeting, and outreach personalization.
+3. keywords: 5–10 industry-standard terms that define WHAT THIS NICHE DOES — the tools, platforms, methodologies, and product categories they work with or buy.
+   These are used as Apollo/LinkedIn search filters and company tags to FIND companies in this space.
 
-   KEYWORD RULES:
-   - Mix of broad category terms AND specific tool/process names
-   - Include terms from the target market's urgent problems and macro trends
-   - Include technology terms, compliance terms, methodology terms relevant to the niche
-   - Think: "What would someone in this niche type into Google or LinkedIn search?"
+   KEYWORD RULES (strictly follow):
+   - These are PRODUCT CATEGORY and TOOL TERMS — names of software, platforms, methodologies, or processes buyers in this niche use, manage, or purchase
+   - They describe what companies in this niche DO or USE, not what problems they have
+   - Do NOT include: marketing terms (lead generation, growth hacking, ROI), problem descriptions (inefficiency, bottleneck, manual process), or GTM/sales buzzwords
+   - Do NOT include: the company's own product name, generic words like "software", "technology", "platform", "solution", "SaaS", "enterprise"
+   - Think: "What specific tools, systems, or methodologies do these companies run on?" and "What product category would a sales rep use to filter for this niche in Apollo?"
 
    Examples by vertical:
-     HR Tech → ["HRIS", "payroll automation", "workforce management", "employee onboarding", "talent acquisition", "ATS", "people analytics", "HR compliance"]
-     Legal Tech → ["contract management", "e-discovery", "legal operations", "CLM", "legal billing", "matter management", "regulatory compliance"]
-     Fintech → ["payment processing", "KYC", "AML compliance", "neobanking", "embedded finance", "open banking API", "digital lending"]
-     Construction → ["BIM", "project management", "field service management", "construction ERP", "safety compliance", "punch list"]
+     HR Tech → ["HRIS", "payroll", "ATS", "workforce management", "employee onboarding", "talent acquisition", "people analytics", "HR compliance", "performance management"]
+     Legal Tech → ["contract management", "e-discovery", "CLM", "legal billing", "matter management", "regulatory compliance", "document automation", "legal operations"]
+     Fintech → ["payment processing", "KYC", "AML", "open banking", "embedded finance", "digital lending", "card issuing", "reconciliation", "PCI compliance"]
+     Construction → ["BIM", "project scheduling", "field service management", "construction ERP", "safety compliance", "RFI management", "subcontractor management"]
+     Marketing Agency → ["SEO", "PPC", "paid media", "media buying", "programmatic advertising", "content marketing", "creative production", "analytics dashboard"]
 
 For each ICP also define:
 - Firmographics: Apollo.io/ZoomInfo-compatible company-level filters shaped by the target markets
@@ -80,7 +82,7 @@ Rules:
 - Create ONE ICP per target market — each grounded in that market's problems and trends
 - standardIndustry must be a real LinkedIn/Apollo database value — never a niche label like "HR Tech"
 - industries in firmographics must also use standardIndustry values only
-- keywords must be 5–10 specific, actionable terms — NOT generic words like "technology" or "software"
+- keywords must be 5–10 PRODUCT CATEGORY / TOOL / METHODOLOGY terms for the niche — NOT marketing terms, problem descriptions, or generic words like "technology", "software", "platform", "SaaS", "growth", "automation" (unless it's a specific named category like "payroll automation" or "test automation")
 - apolloKeywordTags: 5–8 lowercase terms describing what companies in this space DO or SELL
 - Apollo seniority values: "owner", "founder", "c_suite", "partner", "vp", "head", "director", "manager", "senior", "entry"
 - companySize must use Apollo ranges: "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
