@@ -167,14 +167,6 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
     await refresh();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
-      </div>
-    );
-  }
-
   const handleStop = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/stop`, {
@@ -189,6 +181,14 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       toast.error((err as Error).message);
     }
   }, [projectId, stepName, refresh, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
+      </div>
+    );
+  }
 
   if (!step || step.status === "PENDING") return <StepPending stepLabel={stepLabel} />;
   if (step.status === "RUNNING") return <StepRunning stepLabel={stepLabel} onStop={handleStop} />;
