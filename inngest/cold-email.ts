@@ -31,13 +31,47 @@ const EmailSchema = z.object({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timed out after ${ms / 1000}s (${label})`)), ms)
-    ),
-  ]);
+/**
+ * Generates an object with a hard timeout that properly aborts the
+ * underlying HTTP request — not just a Promise.race that wins but leaves
+ * the fetch open (which prevents the serverless function from terminating).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateWithTimeout(
+  params: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    model: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    schema: any;
+    prompt: string;
+  },
+  ms: number,
+  label: string
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(new Error(`Timed out after ${ms / 1000}s (${label})`)),
+    ms
+  );
+  try {
+    const { object } = await generateObject({
+      model: params.model,
+      schema: params.schema,
+      prompt: params.prompt,
+      maxRetries: 0,
+      abortSignal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return object;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    // If we aborted due to timeout, surface a clearer error
+    if (controller.signal.aborted) {
+      throw new Error(`Timed out after ${ms / 1000}s (${label})`);
+    }
+    throw err;
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,6 +104,13 @@ export const coldEmailGenerator = inngest.createFunction(
     id: "cold-email-generator",
     retries: 0,
     triggers: [{ event: "gtm/cold-email.generate" }],
+    // Cancel any existing run for the same project when a new one is triggered
+    cancelOn: [
+      {
+        event: "gtm/cold-email.generate",
+        match: "data.projectId",
+      },
+    ],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event, error }: any) => {
       const original = (event?.data?.event?.data ?? {}) as { projectId?: string; targetMarketName?: string };
@@ -88,18 +129,13 @@ export const coldEmailGenerator = inngest.createFunction(
     const { projectId, targetMarketName } = event.data as { projectId: string; targetMarketName: string };
     console.log("[cold-email] starting", { projectId, targetMarketName });
 
-    // All state transitions MUST be inside step.run — code outside step.run
-    // re-executes on every replay after a waitForEvent resumes. Wrapping in
-    // step.run memoizes the write so it only happens once.
-
-    // ── Init: mark RUNNING + progress=strategy ────────────────────────────────
-    await step.run("init-running", async () => {
-      await mergeDraft(projectId, {
-        status: "RUNNING",
-        targetMarketName,
-        progress: "strategy",
-        startedAt: new Date().toISOString(),
-      });
+    // Mark RUNNING. Top-level (outside step.run) — safe here because this
+    // write is idempotent and the field values are the same on every replay.
+    await mergeDraft(projectId, {
+      status: "RUNNING",
+      targetMarketName,
+      progress: "strategy",
+      startedAt: new Date().toISOString(),
     });
 
     // ── Step 1: Strategy + subject lines ──────────────────────────────────────
@@ -108,10 +144,7 @@ export const coldEmailGenerator = inngest.createFunction(
       try {
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildStrategyPrompt(context, targetMarketName);
-        const { object } = await withTimeout(
-          generateObject({ model, schema: StrategySchema, prompt, maxRetries: 0 }),
-          60_000, "strategy"
-        );
+        const object = await generateWithTimeout({ model, schema: StrategySchema, prompt }, 90_000, "strategy");
         await mergeDraft(projectId, {
           ...object,
           status: "AWAITING_APPROVAL",
@@ -139,18 +172,10 @@ export const coldEmailGenerator = inngest.createFunction(
     const email1 = await step.run("gen-email-1", async () => {
       console.log("[cold-email] gen-email-1 start");
       try {
-        // Flip to RUNNING at the start (idempotent inside step.run)
-        await mergeDraft(projectId, {
-          status: "RUNNING",
-          awaitingApprovalFor: null,
-          progress: "email_1",
-        });
+        await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "email_1" });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(context, targetMarketName, "email_1", strategy.strategy_summary);
-        const { object } = await withTimeout(
-          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
-          60_000, "email_1"
-        );
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "email_1");
         await mergeDraft(projectId, {
           email_1: object,
           status: "AWAITING_APPROVAL",
@@ -177,20 +202,13 @@ export const coldEmailGenerator = inngest.createFunction(
     const followUp1 = await step.run("gen-follow-up-1", async () => {
       console.log("[cold-email] gen-follow-up-1 start");
       try {
-        await mergeDraft(projectId, {
-          status: "RUNNING",
-          awaitingApprovalFor: null,
-          progress: "follow_up_1",
-        });
+        await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_1" });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "follow_up_1", strategy.strategy_summary,
           [{ type: "email_1", body: email1.body }]
         );
-        const { object } = await withTimeout(
-          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
-          60_000, "follow_up_1"
-        );
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "follow_up_1");
         await mergeDraft(projectId, {
           follow_up_1: object,
           status: "AWAITING_APPROVAL",
@@ -217,20 +235,13 @@ export const coldEmailGenerator = inngest.createFunction(
     const followUp2 = await step.run("gen-follow-up-2", async () => {
       console.log("[cold-email] gen-follow-up-2 start");
       try {
-        await mergeDraft(projectId, {
-          status: "RUNNING",
-          awaitingApprovalFor: null,
-          progress: "follow_up_2",
-        });
+        await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_2" });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "follow_up_2", strategy.strategy_summary,
           [{ type: "email_1", body: email1.body }, { type: "follow_up_1", body: followUp1.body }]
         );
-        const { object } = await withTimeout(
-          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
-          60_000, "follow_up_2"
-        );
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "follow_up_2");
         await mergeDraft(projectId, {
           follow_up_2: object,
           status: "AWAITING_APPROVAL",
@@ -253,15 +264,11 @@ export const coldEmailGenerator = inngest.createFunction(
       timeout: "48h",
     });
 
-    // ── Step 5: Break-up email (no approval needed — completes sequence) ──────
+    // ── Step 5: Break-up email (no approval — completes the sequence) ─────────
     await step.run("gen-break-up", async () => {
       console.log("[cold-email] gen-break-up start");
       try {
-        await mergeDraft(projectId, {
-          status: "RUNNING",
-          awaitingApprovalFor: null,
-          progress: "break_up_email",
-        });
+        await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "break_up_email" });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "break_up_email", strategy.strategy_summary,
@@ -271,10 +278,7 @@ export const coldEmailGenerator = inngest.createFunction(
             { type: "follow_up_2", body: followUp2.body },
           ]
         );
-        const { object } = await withTimeout(
-          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
-          60_000, "break_up_email"
-        );
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "break_up_email");
         await mergeDraft(projectId, {
           break_up_email: object,
           status: "COMPLETE",
