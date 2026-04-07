@@ -282,10 +282,11 @@ export default function ColdEmailPage() {
         if (!data.draft) return;
         const d = data.draft as ColdEmailDraft;
         setDraft(d);
-        if (d.status === "COMPLETE" && d.email_1) {
-          initEmailsFromDraft(d);
-          setSelectedMarket(d.targetMarketName);
-        }
+        // Restore the market + any partial emails regardless of status — the
+        // user may be returning mid-approval, so they need to see what's already
+        // generated in order to approve the next step.
+        if (d.targetMarketName) setSelectedMarket(d.targetMarketName);
+        initEmailsFromDraft(d);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

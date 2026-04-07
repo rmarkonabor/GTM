@@ -88,12 +88,18 @@ export const coldEmailGenerator = inngest.createFunction(
     const { projectId, targetMarketName } = event.data as { projectId: string; targetMarketName: string };
     console.log("[cold-email] starting", { projectId, targetMarketName });
 
-    // Mark RUNNING immediately
-    await mergeDraft(projectId, {
-      status: "RUNNING",
-      targetMarketName,
-      progress: "strategy",
-      startedAt: new Date().toISOString(),
+    // All state transitions MUST be inside step.run — code outside step.run
+    // re-executes on every replay after a waitForEvent resumes. Wrapping in
+    // step.run memoizes the write so it only happens once.
+
+    // ── Init: mark RUNNING + progress=strategy ────────────────────────────────
+    await step.run("init-running", async () => {
+      await mergeDraft(projectId, {
+        status: "RUNNING",
+        targetMarketName,
+        progress: "strategy",
+        startedAt: new Date().toISOString(),
+      });
     });
 
     // ── Step 1: Strategy + subject lines ──────────────────────────────────────
@@ -110,7 +116,7 @@ export const coldEmailGenerator = inngest.createFunction(
           ...object,
           status: "AWAITING_APPROVAL",
           awaitingApprovalFor: "strategy",
-          progress: undefined,
+          progress: null,
         });
         console.log("[cold-email] gen-strategy done — awaiting approval");
         return object;
@@ -122,18 +128,23 @@ export const coldEmailGenerator = inngest.createFunction(
       }
     });
 
-    // Wait for user to approve the strategy before writing emails
+    // Wait for user approval
     await step.waitForEvent("wait-for-strategy-approval", {
       event: "cold-email/step.approved",
       match: "data.projectId",
       timeout: "48h",
     });
-    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "email_1" });
 
     // ── Step 2: Email 1 ───────────────────────────────────────────────────────
     const email1 = await step.run("gen-email-1", async () => {
       console.log("[cold-email] gen-email-1 start");
       try {
+        // Flip to RUNNING at the start (idempotent inside step.run)
+        await mergeDraft(projectId, {
+          status: "RUNNING",
+          awaitingApprovalFor: null,
+          progress: "email_1",
+        });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(context, targetMarketName, "email_1", strategy.strategy_summary);
         const { object } = await withTimeout(
@@ -144,7 +155,7 @@ export const coldEmailGenerator = inngest.createFunction(
           email_1: object,
           status: "AWAITING_APPROVAL",
           awaitingApprovalFor: "email_1",
-          progress: undefined,
+          progress: null,
         });
         console.log("[cold-email] gen-email-1 done — awaiting approval");
         return object;
@@ -156,18 +167,21 @@ export const coldEmailGenerator = inngest.createFunction(
       }
     });
 
-    // Wait for user to approve Email 1
     await step.waitForEvent("wait-for-email1-approval", {
       event: "cold-email/step.approved",
       match: "data.projectId",
       timeout: "48h",
     });
-    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_1" });
 
     // ── Step 3: Follow-up 1 ───────────────────────────────────────────────────
     const followUp1 = await step.run("gen-follow-up-1", async () => {
       console.log("[cold-email] gen-follow-up-1 start");
       try {
+        await mergeDraft(projectId, {
+          status: "RUNNING",
+          awaitingApprovalFor: null,
+          progress: "follow_up_1",
+        });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "follow_up_1", strategy.strategy_summary,
@@ -181,7 +195,7 @@ export const coldEmailGenerator = inngest.createFunction(
           follow_up_1: object,
           status: "AWAITING_APPROVAL",
           awaitingApprovalFor: "follow_up_1",
-          progress: undefined,
+          progress: null,
         });
         console.log("[cold-email] gen-follow-up-1 done — awaiting approval");
         return object;
@@ -193,18 +207,21 @@ export const coldEmailGenerator = inngest.createFunction(
       }
     });
 
-    // Wait for user to approve Follow-up 1
     await step.waitForEvent("wait-for-followup1-approval", {
       event: "cold-email/step.approved",
       match: "data.projectId",
       timeout: "48h",
     });
-    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_2" });
 
     // ── Step 4: Follow-up 2 ───────────────────────────────────────────────────
     const followUp2 = await step.run("gen-follow-up-2", async () => {
       console.log("[cold-email] gen-follow-up-2 start");
       try {
+        await mergeDraft(projectId, {
+          status: "RUNNING",
+          awaitingApprovalFor: null,
+          progress: "follow_up_2",
+        });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "follow_up_2", strategy.strategy_summary,
@@ -218,7 +235,7 @@ export const coldEmailGenerator = inngest.createFunction(
           follow_up_2: object,
           status: "AWAITING_APPROVAL",
           awaitingApprovalFor: "follow_up_2",
-          progress: undefined,
+          progress: null,
         });
         console.log("[cold-email] gen-follow-up-2 done — awaiting approval");
         return object;
@@ -230,18 +247,21 @@ export const coldEmailGenerator = inngest.createFunction(
       }
     });
 
-    // Wait for user to approve Follow-up 2
     await step.waitForEvent("wait-for-followup2-approval", {
       event: "cold-email/step.approved",
       match: "data.projectId",
       timeout: "48h",
     });
-    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "break_up_email" });
 
     // ── Step 5: Break-up email (no approval needed — completes sequence) ──────
     await step.run("gen-break-up", async () => {
       console.log("[cold-email] gen-break-up start");
       try {
+        await mergeDraft(projectId, {
+          status: "RUNNING",
+          awaitingApprovalFor: null,
+          progress: "break_up_email",
+        });
         const { model, context } = await loadModelAndContext(projectId);
         const prompt = buildEmailPrompt(
           context, targetMarketName, "break_up_email", strategy.strategy_summary,
@@ -260,7 +280,7 @@ export const coldEmailGenerator = inngest.createFunction(
           status: "COMPLETE",
           completedAt: new Date().toISOString(),
           awaitingApprovalFor: null,
-          progress: undefined,
+          progress: null,
         });
         console.log("[cold-email] gen-break-up done — COMPLETE");
         return object;
