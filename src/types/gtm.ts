@@ -156,8 +156,6 @@ export interface Competitor {
 export interface CompetitiveAnalysisOutput {
   competitors: Competitor[];
   isIndustrySpecific: boolean;
-  // Array instead of Record to avoid JSON schema propertyNames (unsupported by some models)
-  byIndustry?: { industry: string; competitors: Competitor[] }[];
 }
 
 // ─── Manifesto / Messaging ───────────────────────────────────────────────────

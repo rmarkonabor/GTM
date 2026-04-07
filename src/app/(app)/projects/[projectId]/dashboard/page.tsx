@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
-  CheckCircle2, Loader2, TrendingUp, Globe, ChevronRight, Rocket,
+  CheckCircle2, Loader2, TrendingUp, Globe, ChevronRight, Rocket, ChevronDown,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -65,10 +65,15 @@ interface Segment {
   name: string;
   sizeCategory: string;
   estimatedPriority: string;
+  geographies?: string[];
+  industries?: string[];
+  rationale?: string;
   positioning?: {
     messagingHook: string;
     keyPainPoints: string[];
     ourAngle: string;
+    proofPoints?: string[];
+    ctaApproach?: string;
   };
 }
 
@@ -337,38 +342,7 @@ function StrategyTab({
           <SectionHeader icon={BarChart3} title="Segments & Positioning" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {segments.map((seg) => (
-              <Card key={seg.name} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-white">{seg.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{seg.sizeCategory}</p>
-                  </div>
-                  {seg.estimatedPriority && (
-                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
-                      {seg.estimatedPriority.replace("-", " ").toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                {seg.positioning?.messagingHook && (
-                  <div className="bg-slate-800/50 rounded-lg p-3">
-                    <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
-                    <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
-                  </div>
-                )}
-                {seg.positioning?.ourAngle && (
-                  <div>
-                    <p className="text-xs text-slate-500 font-medium mb-1.5">Our Angle</p>
-                    <p className="text-xs text-slate-400">{seg.positioning.ourAngle}</p>
-                  </div>
-                )}
-                {seg.positioning?.keyPainPoints?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {seg.positioning.keyPainPoints.slice(0, 3).map((pp) => (
-                      <span key={pp} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{pp}</span>
-                    ))}
-                  </div>
-                ) : null}
-              </Card>
+              <ExpandableSegmentCard key={seg.name} seg={seg} />
             ))}
           </div>
         </section>
@@ -477,6 +451,135 @@ function ExecutionTab() {
           <p className="mt-8 text-xs text-slate-600">Coming soon</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Expandable Segment Card ────────────────────────────────────────────────
+
+function ExpandableSegmentCard({ seg }: { seg: Segment }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+      {/* Always visible header */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 text-left space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-white">{seg.name}</p>
+            <p className="text-xs text-slate-500 capitalize">{seg.sizeCategory}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {seg.estimatedPriority && (
+              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
+                {seg.estimatedPriority.replace("-", " ").toUpperCase()}
+              </span>
+            )}
+            <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </div>
+        </div>
+
+        {seg.positioning?.messagingHook && (
+          <div className="bg-slate-800/50 rounded-lg p-3">
+            <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
+            <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
+          </div>
+        )}
+
+        {!open && seg.positioning?.keyPainPoints?.length ? (
+          <div className="flex flex-wrap gap-1">
+            {seg.positioning.keyPainPoints.slice(0, 3).map((pp) => (
+              <span key={pp} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">{pp}</span>
+            ))}
+          </div>
+        ) : null}
+      </button>
+
+      {/* Expanded details */}
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-white/5 pt-4">
+          {/* Rationale */}
+          {seg.rationale && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Why This Segment</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{seg.rationale}</p>
+            </div>
+          )}
+
+          {/* Geographies & Industries */}
+          <div className="flex flex-wrap gap-4">
+            {seg.geographies?.length ? (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Geographies</p>
+                <div className="flex flex-wrap gap-1">
+                  {seg.geographies.map((g) => (
+                    <span key={g} className="text-[10px] bg-blue-900/20 text-blue-400 px-2 py-0.5 rounded-full">{g}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {seg.industries?.length ? (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Industries</p>
+                <div className="flex flex-wrap gap-1">
+                  {seg.industries.map((ind) => (
+                    <span key={ind} className="text-[10px] bg-violet-900/20 text-violet-400 px-2 py-0.5 rounded-full">{ind}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Our Angle */}
+          {seg.positioning?.ourAngle && (
+            <div>
+              <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1.5">Our Angle</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{seg.positioning.ourAngle}</p>
+            </div>
+          )}
+
+          {/* Pain Points */}
+          {seg.positioning?.keyPainPoints?.length ? (
+            <div>
+              <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">Key Pain Points</p>
+              <div className="space-y-1.5">
+                {seg.positioning.keyPainPoints.map((pp) => (
+                  <div key={pp} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-red-400 shrink-0" />
+                    <span className="text-xs text-slate-400">{pp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Proof Points */}
+          {seg.positioning?.proofPoints?.length ? (
+            <div>
+              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5">Proof Points</p>
+              <div className="space-y-1.5">
+                {seg.positioning.proofPoints.map((pp) => (
+                  <div key={pp} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="text-xs text-slate-400">{pp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* CTA Approach */}
+          {seg.positioning?.ctaApproach && (
+            <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg p-3">
+              <p className="text-xs font-semibold text-violet-400 mb-1">CTA Approach</p>
+              <p className="text-sm text-slate-300">{seg.positioning.ctaApproach}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
