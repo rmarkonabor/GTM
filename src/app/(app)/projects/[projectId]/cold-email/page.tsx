@@ -2,27 +2,44 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import {
-  Sparkles, Loader2, Send, AlertTriangle, Mail, Square,
-  CheckCircle2, XCircle, ChevronDown, ChevronUp, Info,
-} from "lucide-react";
+import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ColdEmail, SubjectLineOption, QualityCheck, EmailAnnotation } from "@/types/gtm";
+import { ColdEmail, SubjectLineOption, EmailAnnotation } from "@/types/gtm";
 import { checkSpam } from "@/lib/email/spam-words";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type DraftProgress = "strategy" | "email_1" | "follow_up_1" | "follow_up_2" | "break_up_email";
+
+const PROGRESS_LABEL: Record<DraftProgress, string> = {
+  strategy:       "Writing strategy...",
+  email_1:        "Writing Email 1...",
+  follow_up_1:    "Writing Follow-up 1...",
+  follow_up_2:    "Writing Follow-up 2...",
+  break_up_email: "Writing break-up email...",
+};
+
+type AwaitingStep = "strategy" | "email_1" | "follow_up_1" | "follow_up_2";
+
+const APPROVE_LABEL: Record<AwaitingStep, string> = {
+  strategy:    "Approve strategy & write Email 1",
+  email_1:     "Approve Email 1 & write Follow-up 1",
+  follow_up_1: "Approve Follow-up 1 & write Follow-up 2",
+  follow_up_2: "Approve Follow-up 2 & write break-up email",
+};
+
 interface ColdEmailDraft {
-  status: "PENDING" | "RUNNING" | "COMPLETE" | "ERROR" | "CANCELLED";
+  status: "PENDING" | "RUNNING" | "AWAITING_APPROVAL" | "COMPLETE" | "ERROR" | "CANCELLED";
   targetMarketName: string;
+  progress?: DraftProgress;
+  awaitingApprovalFor?: AwaitingStep;
   error?: string;
   startedAt: string;
   completedAt?: string;
-  // New format fields
   strategy_summary?: string;
   campaign_brief?: string;
   subject_lines?: SubjectLineOption[];
@@ -30,7 +47,7 @@ interface ColdEmailDraft {
   follow_up_1?: ColdEmail;
   follow_up_2?: ColdEmail;
   break_up_email?: ColdEmail;
-  quality_check?: QualityCheck;
+
   missing_inputs?: string[];
 }
 
@@ -199,63 +216,6 @@ function SubjectLineSelector({
   );
 }
 
-// ─── Quality Check ────────────────────────────────────────────────────────────
-
-function QualityCheckPanel({ qc }: { qc: QualityCheck }) {
-  const [open, setOpen] = useState(false);
-  const checks: { label: string; value: boolean }[] = [
-    { label: "Feels human", value: qc.feels_human },
-    { label: "No buzzwords", value: qc.no_buzzwords },
-    { label: "Prospect-focused", value: qc.prospect_focused },
-    { label: "CTA easy to reply to", value: qc.cta_easy_to_reply },
-  ];
-  const allPassed = checks.every((c) => c.value);
-
-  return (
-    <div className={`rounded-xl border px-4 py-3 ${allPassed ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5"}`}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-between w-full gap-3"
-      >
-        <div className="flex items-center gap-2">
-          {allPassed
-            ? <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            : <AlertTriangle className="h-4 w-4 text-amber-400" />
-          }
-          <span className="text-sm font-semibold text-white">Quality Check</span>
-          <span className="text-xs text-slate-500">Email 1: {qc.word_count_email_1} words</span>
-          {qc.word_count_email_1 < 50 && (
-            <span className="text-[10px] text-amber-400 border border-amber-500/20 bg-amber-500/10 rounded-full px-2 py-0.5">Too short</span>
-          )}
-          {qc.word_count_email_1 > 100 && (
-            <span className="text-[10px] text-amber-400 border border-amber-500/20 bg-amber-500/10 rounded-full px-2 py-0.5">Too long</span>
-          )}
-        </div>
-        {open ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-      </button>
-
-      {open && (
-        <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
-          <div className="grid grid-cols-2 gap-2">
-            {checks.map((c) => (
-              <div key={c.label} className="flex items-center gap-2 text-xs">
-                {c.value
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                }
-                <span className={c.value ? "text-slate-300" : "text-slate-400"}>{c.label}</span>
-              </div>
-            ))}
-          </div>
-          {qc.notes && (
-            <p className="text-[11px] text-slate-500 pt-1 border-t border-white/5">{qc.notes}</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Missing Inputs ───────────────────────────────────────────────────────────
 
 function MissingInputs({ items }: { items: string[] }) {
@@ -350,10 +310,10 @@ export default function ColdEmailPage() {
     }
   }, [companyName, selectedMarket]);
 
-  // Polling
+  // Polling — active while PENDING, RUNNING, or transitioning out of AWAITING_APPROVAL
   useEffect(() => {
-    const isRunning = draft?.status === "PENDING" || draft?.status === "RUNNING";
-    if (!isRunning) {
+    const shouldPoll = draft?.status === "PENDING" || draft?.status === "RUNNING";
+    if (!shouldPoll) {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
@@ -366,9 +326,13 @@ export default function ColdEmailPage() {
         if (!data.draft) return;
         const d = data.draft as ColdEmailDraft;
         setDraft(d);
+        // Sync partial emails on every tick so each email appears as its step completes
+        initEmailsFromDraft(d);
         if (d.status === "COMPLETE" && d.email_1) {
-          initEmailsFromDraft(d);
           toast.success("Email sequence ready!");
+          clearInterval(pollRef.current!); pollRef.current = null;
+        } else if (d.status === "AWAITING_APPROVAL") {
+          // Step completed — stop polling until user approves
           clearInterval(pollRef.current!); pollRef.current = null;
         } else if (d.status === "ERROR") {
           toast.error(d.error ?? "Generation failed. Please try again.");
@@ -412,6 +376,27 @@ export default function ColdEmailPage() {
     toast("Generation stopped.");
   }, [projectId]);
 
+  const [approving, setApproving] = useState(false);
+
+  const handleApprove = useCallback(async () => {
+    setApproving(true);
+    // Optimistically switch to RUNNING so polling starts
+    setDraft((prev) => prev ? { ...prev, status: "RUNNING", awaitingApprovalFor: undefined } : null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/cold-email`, { method: "PATCH" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message ?? "Failed to approve step");
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+      // Revert optimistic update on failure
+      setDraft((prev) => prev ? { ...prev, status: "AWAITING_APPROVAL" } : null);
+    } finally {
+      setApproving(false);
+    }
+  }, [projectId]);
+
   const handlePush = useCallback(async () => {
     if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
     const subjectForEmail1 = draft?.subject_lines?.[selectedSubjectIdx]?.text ?? emails.email_1?.subject ?? "";
@@ -447,6 +432,8 @@ export default function ColdEmailPage() {
   }, [campaignName, emails, selectedSubjectIdx, draft, selectedMarket, projectId]);
 
   const generating = draft?.status === "PENDING" || draft?.status === "RUNNING";
+  const isAwaiting = draft?.status === "AWAITING_APPROVAL";
+  const isActive = generating || isAwaiting; // sequence in progress (block regenerate)
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -473,7 +460,7 @@ export default function ColdEmailPage() {
                 Complete the Target Markets step first.
               </p>
             ) : (
-              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={generating}>
+              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={isActive}>
                 <SelectTrigger className="bg-slate-800 border-white/15 text-white">
                   <SelectValue placeholder="Select a market…" />
                 </SelectTrigger>
@@ -489,7 +476,7 @@ export default function ColdEmailPage() {
           </div>
           <Button
             onClick={handleGenerate}
-            disabled={generating || !selectedMarket || markets.length === 0}
+            disabled={isActive || !selectedMarket || markets.length === 0}
             className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shrink-0"
           >
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -497,11 +484,13 @@ export default function ColdEmailPage() {
           </Button>
         </div>
 
+        {/* Generating banner */}
         {generating && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
             <div className="flex items-center gap-2 text-xs text-violet-400">
               <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-              Generating in the background — you can safely navigate away and come back.
+              {draft?.progress ? PROGRESS_LABEL[draft.progress] : "Starting generation..."}
+              <span className="text-violet-500/60">You can navigate away safely.</span>
             </div>
             <button
               onClick={handleStop}
@@ -514,6 +503,33 @@ export default function ColdEmailPage() {
           </div>
         )}
 
+        {/* Approval banner */}
+        {isAwaiting && draft.awaitingApprovalFor && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              Review the output below, then approve to continue.
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleStop}
+                className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+              >
+                Stop
+              </button>
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                disabled={approving}
+                className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs gap-1.5 h-7 px-3"
+              >
+                {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                {APPROVE_LABEL[draft.awaitingApprovalFor]}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {draft?.status === "ERROR" && (
           <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-xs text-red-400">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -522,8 +538,8 @@ export default function ColdEmailPage() {
         )}
       </div>
 
-      {/* Results */}
-      {isComplete && (
+      {/* Results — show as they arrive (even while still generating) */}
+      {(draft?.strategy_summary || draft?.email_1) && (
         <>
           {/* Strategy summary */}
           {(draft.strategy_summary || draft.campaign_brief) && (
@@ -547,7 +563,7 @@ export default function ColdEmailPage() {
             />
           )}
 
-          {/* Email editors */}
+          {/* Email editors — appear one by one as each step completes */}
           <div className="space-y-4">
             {EMAIL_KEYS.map((key) => {
               const email = emails[key];
@@ -563,39 +579,38 @@ export default function ColdEmailPage() {
             })}
           </div>
 
-          {/* Quality check */}
-          {draft.quality_check && <QualityCheckPanel qc={draft.quality_check} />}
-
           {/* Missing inputs */}
           {draft.missing_inputs && <MissingInputs items={draft.missing_inputs} />}
 
-          {/* Push to Smartlead */}
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-emerald-400" />
-              <h3 className="font-semibold text-white text-sm">Push to Smartlead</h3>
+          {/* Push to Smartlead — only when all 4 emails are ready */}
+          {isComplete && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <Send className="h-4 w-4 text-emerald-400" />
+                <h3 className="font-semibold text-white text-sm">Push to Smartlead</h3>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">Campaign Name</label>
+                <Input
+                  value={campaignName}
+                  onChange={(e) => setCampaignName(e.target.value)}
+                  className="bg-slate-800 border-white/10 text-white text-sm"
+                  placeholder="My Campaign"
+                />
+              </div>
+              <Button
+                onClick={handlePush}
+                disabled={pushing || !campaignName.trim()}
+                className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
+              >
+                {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {pushing ? "Creating campaign…" : "Create Campaign on Smartlead"}
+              </Button>
+              <p className="text-xs text-slate-600">
+                Creates the campaign with 4 sequence steps using the selected subject line for Email 1. No leads added.
+              </p>
             </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1.5">Campaign Name</label>
-              <Input
-                value={campaignName}
-                onChange={(e) => setCampaignName(e.target.value)}
-                className="bg-slate-800 border-white/10 text-white text-sm"
-                placeholder="My Campaign"
-              />
-            </div>
-            <Button
-              onClick={handlePush}
-              disabled={pushing || !campaignName.trim()}
-              className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
-            >
-              {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {pushing ? "Creating campaign…" : "Create Campaign on Smartlead"}
-            </Button>
-            <p className="text-xs text-slate-600">
-              Creates the campaign with 4 sequence steps using the selected subject line for Email 1. No leads added.
-            </p>
-          </div>
+          )}
         </>
       )}
     </div>

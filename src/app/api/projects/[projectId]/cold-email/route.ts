@@ -53,6 +53,38 @@ export async function POST(
   }
 }
 
+/** PATCH — approve current step and continue generation */
+export async function PATCH(
+  _req: NextRequest,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Please sign in." } }, { status: 401 });
+    }
+    const { projectId } = await params;
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: session.user.id },
+      select: { id: true },
+    });
+    if (!project) {
+      return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
+    }
+
+    // Send approval event — Inngest resumes the waiting step
+    await inngest.send({
+      name: "cold-email/step.approved",
+      data: { projectId },
+    });
+
+    return NextResponse.json({ status: "approved" });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
 /** DELETE — cancel an in-progress generation */
 export async function DELETE(
   _req: NextRequest,

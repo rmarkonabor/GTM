@@ -4,169 +4,271 @@ import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference } from "@/types/gtm";
 import { buildContextFromDB, buildStepContext } from "@/lib/workflow/context-builder";
 import { getLanguageModel } from "@/lib/ai/providers";
-import { buildColdEmailPrompt } from "@/lib/ai/prompts/cold-email";
+import { buildStrategyPrompt, buildEmailPrompt } from "@/lib/ai/prompts/cold-email";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-const EmailAnnotationSchema = z.object({
-  part: z.enum(["subject", "opener", "body", "cta", "closing"]),
-  text: z.string(),
-  metric: z.enum(["open_rate", "reply_rate", "engagement", "click_rate"]),
-  impact: z.string(),
+// ─── Schemas (small and focused — one per call) ───────────────────────────────
+
+const StrategySchema = z.object({
+  strategy_summary: z.string(),
+  campaign_brief: z.string(),
+  subject_lines: z.array(z.object({ text: z.string(), rationale: z.string() })).min(1).max(3),
+  missing_inputs: z.array(z.string()),
 });
 
-const SubjectLineSchema = z.object({
-  text: z.string(),
-  rationale: z.string(),
-});
-
-const ColdEmailSchema = z.object({
+const EmailSchema = z.object({
   subject: z.string(),
   body: z.string(),
   waitDays: z.number().int().min(0),
   angle: z.string(),
-  annotations: z.array(EmailAnnotationSchema).min(1).max(6),
+  annotations: z.array(z.object({
+    part: z.enum(["subject", "opener", "body", "cta", "closing"]),
+    metric: z.enum(["open_rate", "reply_rate", "engagement", "click_rate"]),
+    impact: z.string(),
+  })).min(1).max(4),
 });
 
-const QualityCheckSchema = z.object({
-  word_count_email_1: z.number().int(),
-  feels_human: z.boolean(),
-  no_buzzwords: z.boolean(),
-  prospect_focused: z.boolean(),
-  cta_easy_to_reply: z.boolean(),
-  notes: z.string().optional(),
-});
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ColdEmailOutputSchema = z.object({
-  strategy_summary: z.string(),
-  campaign_brief: z.string(),
-  subject_lines: z.array(SubjectLineSchema).min(1).max(3),
-  email_1: ColdEmailSchema,
-  follow_up_1: ColdEmailSchema,
-  follow_up_2: ColdEmailSchema,
-  break_up_email: ColdEmailSchema,
-  quality_check: QualityCheckSchema,
-  missing_inputs: z.array(z.string()),
-});
-
-/** Race a promise against a hard timeout using setTimeout — works in all environments. */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`[cold-email] Timed out after ${ms / 1000}s (${label})`)), ms)
+      setTimeout(() => reject(new Error(`Timed out after ${ms / 1000}s (${label})`)), ms)
     ),
   ]);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function saveDraft(projectId: string, payload: any): Promise<void> {
+async function mergeDraft(projectId: string, update: any): Promise<void> {
+  const row = await prisma.project.findUnique({ where: { id: projectId }, select: { coldEmailDraft: true } });
+  const current = (row?.coldEmailDraft ?? {}) as Record<string, unknown>;
   await prisma.project.update({
     where: { id: projectId },
-    data: { coldEmailDraft: payload },
+    data: { coldEmailDraft: { ...current, ...update } },
   });
 }
+
+async function loadModelAndContext(projectId: string) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, include: { user: true } });
+  if (!project) throw new Error("Project not found");
+  const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
+  if (!llmRaw) throw new Error("No LLM API key configured — add it in Settings.");
+  const llmPreference = JSON.parse(llmRaw) as LLMPreference;
+  const ctx = await buildContextFromDB(projectId);
+  if (!ctx) throw new Error("Project context not found");
+  const context = buildStepContext(ctx);
+  const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
+  return { model, context };
+}
+
+// ─── Function ─────────────────────────────────────────────────────────────────
 
 export const coldEmailGenerator = inngest.createFunction(
   {
     id: "cold-email-generator",
-    retries: 0, // no Inngest retries — we handle errors ourselves and report immediately
+    retries: 0,
     triggers: [{ event: "gtm/cold-email.generate" }],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event, error }: any) => {
-      // Inngest v4: original event is at event.data.event.data, not event.data
       const original = (event?.data?.event?.data ?? {}) as { projectId?: string; targetMarketName?: string };
       const { projectId, targetMarketName } = original;
-      console.error("[cold-email] onFailure fired", { projectId, error: error?.message });
+      console.error("[cold-email] onFailure", { projectId, error: error?.message });
       if (!projectId) return;
-      await saveDraft(projectId, {
+      await mergeDraft(projectId, {
         status: "ERROR",
         targetMarketName: targetMarketName ?? "",
         error: error?.message ?? "Generation failed. Please try again.",
-        startedAt: new Date().toISOString(),
       }).catch((e) => console.error("[cold-email] onFailure DB write failed", e));
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: any) => {
-    const { projectId, targetMarketName } = event.data as {
-      projectId: string;
-      targetMarketName: string;
-    };
+    const { projectId, targetMarketName } = event.data as { projectId: string; targetMarketName: string };
+    console.log("[cold-email] starting", { projectId, targetMarketName });
 
-    console.log("[cold-email] starting generation", { projectId, targetMarketName });
+    // Mark RUNNING immediately
+    await mergeDraft(projectId, {
+      status: "RUNNING",
+      targetMarketName,
+      progress: "strategy",
+      startedAt: new Date().toISOString(),
+    });
 
-    await step.run("generate-cold-email", async () => {
-      // Step 1: mark RUNNING
-      await saveDraft(projectId, {
-        status: "RUNNING",
-        targetMarketName,
-        startedAt: new Date().toISOString(),
-      });
-      console.log("[cold-email] marked RUNNING", { projectId });
-
+    // ── Step 1: Strategy + subject lines ──────────────────────────────────────
+    const strategy = await step.run("gen-strategy", async () => {
+      console.log("[cold-email] gen-strategy start");
       try {
-        // Step 2: load project + user config
-        const project = await withTimeout(
-          prisma.project.findUnique({ where: { id: projectId }, include: { user: true } }),
-          10_000,
-          "DB load"
-        );
-        if (!project) throw new Error("Project not found");
-
-        const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
-        if (!llmRaw) throw new Error("No LLM API key configured — add it in Settings.");
-        const llmPreference = JSON.parse(llmRaw) as LLMPreference;
-        console.log("[cold-email] loaded config, provider:", llmPreference.provider);
-
-        // Step 3: build context
-        const ctx = await withTimeout(buildContextFromDB(projectId), 10_000, "context build");
-        if (!ctx) throw new Error("Project context not found");
-        const context = buildStepContext(ctx);
-        console.log("[cold-email] context built, chars:", context.length);
-
-        // Step 4: generate
-        const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
-        const prompt = buildColdEmailPrompt(context, targetMarketName);
-        console.log("[cold-email] calling LLM, prompt chars:", prompt.length);
-
+        const { model, context } = await loadModelAndContext(projectId);
+        const prompt = buildStrategyPrompt(context, targetMarketName);
         const { object } = await withTimeout(
-          generateObject({
-            model,
-            schema: ColdEmailOutputSchema,
-            prompt,
-            maxRetries: 0, // no silent AI SDK retries — fail fast, show the real error
-          }),
-          80_000,
-          "LLM generateObject"
+          generateObject({ model, schema: StrategySchema, prompt, maxRetries: 0 }),
+          60_000, "strategy"
         );
-        console.log("[cold-email] LLM returned, saving COMPLETE");
-
-        // Step 5: save result
-        await saveDraft(projectId, {
-          status: "COMPLETE",
-          targetMarketName,
-          startedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
+        await mergeDraft(projectId, {
           ...object,
+          status: "AWAITING_APPROVAL",
+          awaitingApprovalFor: "strategy",
+          progress: undefined,
         });
-        console.log("[cold-email] saved COMPLETE", { projectId });
-
+        console.log("[cold-email] gen-strategy done — awaiting approval");
+        return object;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Generation failed. Please try again.";
-        console.error("[cold-email] generation error:", message, err);
+        const msg = err instanceof Error ? err.message : "Strategy generation failed";
+        console.error("[cold-email] gen-strategy error:", msg);
+        await mergeDraft(projectId, { status: "ERROR", error: msg }).catch(() => {});
+        throw err;
+      }
+    });
 
-        // Write ERROR to DB — this is the primary error path, don't rely on onFailure
-        await saveDraft(projectId, {
-          status: "ERROR",
-          targetMarketName,
-          error: message,
-          startedAt: new Date().toISOString(),
-        }).catch((dbErr) => {
-          console.error("[cold-email] CRITICAL: failed to write ERROR status to DB:", dbErr);
+    // Wait for user to approve the strategy before writing emails
+    await step.waitForEvent("wait-for-strategy-approval", {
+      event: "cold-email/step.approved",
+      match: "data.projectId",
+      timeout: "48h",
+    });
+    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "email_1" });
+
+    // ── Step 2: Email 1 ───────────────────────────────────────────────────────
+    const email1 = await step.run("gen-email-1", async () => {
+      console.log("[cold-email] gen-email-1 start");
+      try {
+        const { model, context } = await loadModelAndContext(projectId);
+        const prompt = buildEmailPrompt(context, targetMarketName, "email_1", strategy.strategy_summary);
+        const { object } = await withTimeout(
+          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
+          60_000, "email_1"
+        );
+        await mergeDraft(projectId, {
+          email_1: object,
+          status: "AWAITING_APPROVAL",
+          awaitingApprovalFor: "email_1",
+          progress: undefined,
         });
+        console.log("[cold-email] gen-email-1 done — awaiting approval");
+        return object;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Email 1 generation failed";
+        console.error("[cold-email] gen-email-1 error:", msg);
+        await mergeDraft(projectId, { status: "ERROR", error: msg }).catch(() => {});
+        throw err;
+      }
+    });
 
-        throw err; // let Inngest know the step failed
+    // Wait for user to approve Email 1
+    await step.waitForEvent("wait-for-email1-approval", {
+      event: "cold-email/step.approved",
+      match: "data.projectId",
+      timeout: "48h",
+    });
+    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_1" });
+
+    // ── Step 3: Follow-up 1 ───────────────────────────────────────────────────
+    const followUp1 = await step.run("gen-follow-up-1", async () => {
+      console.log("[cold-email] gen-follow-up-1 start");
+      try {
+        const { model, context } = await loadModelAndContext(projectId);
+        const prompt = buildEmailPrompt(
+          context, targetMarketName, "follow_up_1", strategy.strategy_summary,
+          [{ type: "email_1", body: email1.body }]
+        );
+        const { object } = await withTimeout(
+          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
+          60_000, "follow_up_1"
+        );
+        await mergeDraft(projectId, {
+          follow_up_1: object,
+          status: "AWAITING_APPROVAL",
+          awaitingApprovalFor: "follow_up_1",
+          progress: undefined,
+        });
+        console.log("[cold-email] gen-follow-up-1 done — awaiting approval");
+        return object;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Follow-up 1 generation failed";
+        console.error("[cold-email] gen-follow-up-1 error:", msg);
+        await mergeDraft(projectId, { status: "ERROR", error: msg }).catch(() => {});
+        throw err;
+      }
+    });
+
+    // Wait for user to approve Follow-up 1
+    await step.waitForEvent("wait-for-followup1-approval", {
+      event: "cold-email/step.approved",
+      match: "data.projectId",
+      timeout: "48h",
+    });
+    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "follow_up_2" });
+
+    // ── Step 4: Follow-up 2 ───────────────────────────────────────────────────
+    const followUp2 = await step.run("gen-follow-up-2", async () => {
+      console.log("[cold-email] gen-follow-up-2 start");
+      try {
+        const { model, context } = await loadModelAndContext(projectId);
+        const prompt = buildEmailPrompt(
+          context, targetMarketName, "follow_up_2", strategy.strategy_summary,
+          [{ type: "email_1", body: email1.body }, { type: "follow_up_1", body: followUp1.body }]
+        );
+        const { object } = await withTimeout(
+          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
+          60_000, "follow_up_2"
+        );
+        await mergeDraft(projectId, {
+          follow_up_2: object,
+          status: "AWAITING_APPROVAL",
+          awaitingApprovalFor: "follow_up_2",
+          progress: undefined,
+        });
+        console.log("[cold-email] gen-follow-up-2 done — awaiting approval");
+        return object;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Follow-up 2 generation failed";
+        console.error("[cold-email] gen-follow-up-2 error:", msg);
+        await mergeDraft(projectId, { status: "ERROR", error: msg }).catch(() => {});
+        throw err;
+      }
+    });
+
+    // Wait for user to approve Follow-up 2
+    await step.waitForEvent("wait-for-followup2-approval", {
+      event: "cold-email/step.approved",
+      match: "data.projectId",
+      timeout: "48h",
+    });
+    await mergeDraft(projectId, { status: "RUNNING", awaitingApprovalFor: null, progress: "break_up_email" });
+
+    // ── Step 5: Break-up email (no approval needed — completes sequence) ──────
+    await step.run("gen-break-up", async () => {
+      console.log("[cold-email] gen-break-up start");
+      try {
+        const { model, context } = await loadModelAndContext(projectId);
+        const prompt = buildEmailPrompt(
+          context, targetMarketName, "break_up_email", strategy.strategy_summary,
+          [
+            { type: "email_1", body: email1.body },
+            { type: "follow_up_1", body: followUp1.body },
+            { type: "follow_up_2", body: followUp2.body },
+          ]
+        );
+        const { object } = await withTimeout(
+          generateObject({ model, schema: EmailSchema, prompt, maxRetries: 0 }),
+          60_000, "break_up_email"
+        );
+        await mergeDraft(projectId, {
+          break_up_email: object,
+          status: "COMPLETE",
+          completedAt: new Date().toISOString(),
+          awaitingApprovalFor: null,
+          progress: undefined,
+        });
+        console.log("[cold-email] gen-break-up done — COMPLETE");
+        return object;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Break-up email generation failed";
+        console.error("[cold-email] gen-break-up error:", msg);
+        await mergeDraft(projectId, { status: "ERROR", error: msg }).catch(() => {});
+        throw err;
       }
     });
 
