@@ -129,14 +129,23 @@ export const coldEmailGenerator = inngest.createFunction(
     const { projectId, targetMarketName } = event.data as { projectId: string; targetMarketName: string };
     console.log("[cold-email] starting", { projectId, targetMarketName });
 
-    // Mark RUNNING. Top-level (outside step.run) — safe here because this
-    // write is idempotent and the field values are the same on every replay.
-    await mergeDraft(projectId, {
-      status: "RUNNING",
-      targetMarketName,
-      progress: "strategy",
-      startedAt: new Date().toISOString(),
+    // Mark RUNNING on the very first invocation only (when status is PENDING).
+    // On replays after waitForEvent, the PATCH handler already set status=RUNNING
+    // so we skip this to avoid overwriting `progress` with "strategy" when we're
+    // actually mid-sequence (e.g., about to run email_1).
+    const existing = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { coldEmailDraft: true },
     });
+    const currentStatus = (existing?.coldEmailDraft as Record<string, unknown> | null)?.status;
+    if (currentStatus === "PENDING" || currentStatus === "RUNNING") {
+      await mergeDraft(projectId, {
+        status: "RUNNING",
+        targetMarketName,
+        progress: "strategy",
+        startedAt: new Date().toISOString(),
+      });
+    }
 
     // ── Step 1: Strategy + subject lines ──────────────────────────────────────
     const strategy = await step.run("gen-strategy", async () => {

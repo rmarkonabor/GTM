@@ -67,11 +67,28 @@ export async function PATCH(
 
     const project = await prisma.project.findFirst({
       where: { id: projectId, userId: session.user.id },
-      select: { id: true },
+      select: { id: true, coldEmailDraft: true },
     });
     if (!project) {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
+
+    // Write RUNNING to DB immediately so the polling loop doesn't see
+    // AWAITING_APPROVAL again before Inngest re-invokes the function.
+    // Without this the banner briefly reappears, enabling a second click
+    // that fires a premature approval event — dropped by Inngest, leaving
+    // the function stuck at the next waitForEvent.
+    const existing = (project.coldEmailDraft ?? {}) as Record<string, unknown>;
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        coldEmailDraft: {
+          ...existing,
+          status: "RUNNING",
+          awaitingApprovalFor: null,
+        },
+      },
+    });
 
     // Send approval event — Inngest resumes the waiting step
     await inngest.send({
