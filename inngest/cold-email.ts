@@ -49,29 +49,46 @@ const ColdEmailOutputSchema = z.object({
   missing_inputs: z.array(z.string()).describe("Data points that would improve copy relevance if known"),
 });
 
+/** Wrap a promise with a manual timeout that's universally reliable across all environments. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms)
+    ),
+  ]);
+}
+
+async function markDraft(
+  projectId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload: any
+): Promise<void> {
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { coldEmailDraft: payload },
+  }).catch(() => {});
+}
+
 export const coldEmailGenerator = inngest.createFunction(
   {
     id: "cold-email-generator",
     retries: 1,
     triggers: [{ event: "gtm/cold-email.generate" }],
+    // onFailure: last-resort safety net. Catches cases where the step itself
+    // couldn't update the DB (e.g. DB unreachable during error handling).
+    // In Inngest v4, original event data is at event.data.event.data.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event, error }: any) => {
-      // In Inngest v4, onFailure receives inngest/function.failed.
-      // Original event data is nested at event.data.event.data — NOT event.data directly.
       const original = (event?.data?.event?.data ?? {}) as { projectId?: string; targetMarketName?: string };
       const { projectId, targetMarketName } = original;
       if (!projectId) return;
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          coldEmailDraft: {
-            status: "ERROR",
-            targetMarketName: targetMarketName ?? "",
-            error: error?.message ?? "Generation failed. Please try again.",
-            startedAt: new Date().toISOString(),
-          },
-        },
-      }).catch(() => {});
+      await markDraft(projectId, {
+        status: "ERROR",
+        targetMarketName: targetMarketName ?? "",
+        error: error?.message ?? "Generation failed. Please try again.",
+        startedAt: new Date().toISOString(),
+      });
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,63 +98,62 @@ export const coldEmailGenerator = inngest.createFunction(
       targetMarketName: string;
     };
 
-    // Mark as RUNNING
-    await step.run("mark-running", async () => {
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          coldEmailDraft: {
-            status: "RUNNING",
-            targetMarketName,
-            startedAt: new Date().toISOString(),
+    await step.run("generate-cold-email", async () => {
+      // Mark RUNNING at the start of the step
+      await markDraft(projectId, {
+        status: "RUNNING",
+        targetMarketName,
+        startedAt: new Date().toISOString(),
+      });
+
+      try {
+        const project = await prisma.project.findUnique({
+          where: { id: projectId },
+          include: { user: true },
+        });
+
+        if (!project) throw new Error("Project not found");
+
+        const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
+        if (!llmRaw) throw new Error("No LLM API key configured. Add it in Settings.");
+        const llmPreference = JSON.parse(llmRaw) as LLMPreference;
+
+        const ctx = await buildContextFromDB(projectId);
+        if (!ctx) throw new Error("Project context not found");
+
+        const context = buildStepContext(ctx);
+        const prompt = buildColdEmailPrompt(context, targetMarketName);
+        const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
+
+        const { object } = await withTimeout(
+          generateObject({ model, schema: ColdEmailOutputSchema, prompt }),
+          85_000,
+          "LLM response timed out after 85 seconds. Please try again."
+        );
+
+        // Persist COMPLETE immediately — don't rely on a separate step
+        await prisma.project.update({
+          where: { id: projectId },
+          data: {
+            coldEmailDraft: {
+              status: "COMPLETE",
+              targetMarketName,
+              startedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              ...object,
+            },
           },
-        },
-      });
-    });
-
-    // Generate
-    const result = await step.run("generate-emails", async () => {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        include: { user: true },
-      });
-
-      if (!project) throw new Error("Project not found");
-
-      const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
-      if (!llmRaw) throw new Error("LLM not configured. Please add your API key in Settings.");
-      const llmPreference = JSON.parse(llmRaw) as LLMPreference;
-
-      const ctx = await buildContextFromDB(projectId);
-      if (!ctx) throw new Error("Project context not found");
-
-      const context = buildStepContext(ctx);
-      const prompt = buildColdEmailPrompt(context, targetMarketName);
-      const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
-      const { object } = await generateObject({
-        model,
-        schema: ColdEmailOutputSchema,
-        prompt,
-        abortSignal: AbortSignal.timeout(90_000),
-      });
-
-      return object;
-    });
-
-    // Save result
-    await step.run("save-result", async () => {
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          coldEmailDraft: {
-            status: "COMPLETE",
-            targetMarketName,
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
-            ...result,
-          },
-        },
-      });
+        });
+      } catch (err) {
+        // Write ERROR to DB directly — don't rely solely on onFailure
+        await markDraft(projectId, {
+          status: "ERROR",
+          targetMarketName,
+          error: err instanceof Error ? err.message : "Generation failed. Please try again.",
+          startedAt: new Date().toISOString(),
+        });
+        throw err; // let Inngest know the step failed (triggers retry/onFailure)
+      }
     });
 
     return { ok: true };
