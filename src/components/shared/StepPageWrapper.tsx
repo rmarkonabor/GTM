@@ -152,11 +152,13 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
           ? { ...prev, draftOutput: newOutput }
           : { ...prev, output: newOutput };
       });
+      // Invalidate the Next.js router cache so the dashboard reflects this change
+      router.refresh();
     } catch (err) {
       toast.error("Could not save: " + (err as Error).message);
       await refresh();
     }
-  }, [projectId, stepName, refresh]);
+  }, [projectId, stepName, refresh, router]);
 
   // Reset edit mode when AI re-runs the step
   useEffect(() => {
