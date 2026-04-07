@@ -2,7 +2,7 @@ import { inngest } from "@/../inngest/client";
 import { prisma } from "@/lib/db/client";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference } from "@/types/gtm";
-import { buildContextFromDB, buildStepContext } from "@/lib/workflow/context-builder";
+import { buildContextFromDB, buildColdEmailContext } from "@/lib/workflow/context-builder";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { buildStrategyPrompt, buildEmailPrompt } from "@/lib/ai/prompts/cold-email";
 import { generateObject } from "ai";
@@ -81,7 +81,7 @@ async function mergeDraft(projectId: string, update: any): Promise<void> {
   });
 }
 
-async function loadModelAndContext(projectId: string) {
+async function loadModelAndContext(projectId: string, targetMarketName: string) {
   const project = await prisma.project.findUnique({ where: { id: projectId }, include: { user: true } });
   if (!project) throw new Error("Project not found");
   const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
@@ -89,8 +89,9 @@ async function loadModelAndContext(projectId: string) {
   const llmPreference = JSON.parse(llmRaw) as LLMPreference;
   const ctx = await buildContextFromDB(projectId);
   if (!ctx) throw new Error("Project context not found");
+  // Use focused context (not full JSON dump) — keeps prompts small and fast
   return {
-    context: buildStepContext(ctx),
+    context: buildColdEmailContext(ctx, targetMarketName),
     model: getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email"),
   };
 }
@@ -150,11 +151,11 @@ export const coldEmailGenerator = inngest.createFunction(
     });
 
     try {
-      const { model, context } = await loadModelAndContext(projectId);
+      const { model, context } = await loadModelAndContext(projectId, targetMarketName);
 
       if (step === "strategy") {
         const prompt = buildStrategyPrompt(context, targetMarketName);
-        const object = await generateWithTimeout({ model, schema: StrategySchema, prompt }, 90_000, "strategy");
+        const object = await generateWithTimeout({ model, schema: StrategySchema, prompt }, 60_000, "strategy");
         await mergeDraft(projectId, {
           ...object,
           status: "AWAITING_APPROVAL",
@@ -171,7 +172,7 @@ export const coldEmailGenerator = inngest.createFunction(
 
       if (step === "email_1") {
         const prompt = buildEmailPrompt(context, targetMarketName, "email_1", strategySummary);
-        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "email_1");
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 60_000, "email_1");
         await mergeDraft(projectId, {
           email_1: object,
           status: "AWAITING_APPROVAL",
@@ -187,7 +188,7 @@ export const coldEmailGenerator = inngest.createFunction(
         const prompt = buildEmailPrompt(context, targetMarketName, "follow_up_1", strategySummary,
           [{ type: "email_1", body: email1Body }]
         );
-        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "follow_up_1");
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 60_000, "follow_up_1");
         await mergeDraft(projectId, {
           follow_up_1: object,
           status: "AWAITING_APPROVAL",
@@ -204,7 +205,7 @@ export const coldEmailGenerator = inngest.createFunction(
         const prompt = buildEmailPrompt(context, targetMarketName, "follow_up_2", strategySummary,
           [{ type: "email_1", body: email1Body }, { type: "follow_up_1", body: fu1Body }]
         );
-        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "follow_up_2");
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 60_000, "follow_up_2");
         await mergeDraft(projectId, {
           follow_up_2: object,
           status: "AWAITING_APPROVAL",
@@ -226,7 +227,7 @@ export const coldEmailGenerator = inngest.createFunction(
             { type: "follow_up_2", body: fu2Body },
           ]
         );
-        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 90_000, "break_up_email");
+        const object = await generateWithTimeout({ model, schema: EmailSchema, prompt }, 60_000, "break_up_email");
         await mergeDraft(projectId, {
           break_up_email: object,
           status: "COMPLETE",

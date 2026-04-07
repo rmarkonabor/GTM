@@ -25,7 +25,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "segmentation": "MEDIUM",
   "competitive-analysis": "COMPLEX",
   "manifesto": "COMPLEX",
-  "cold-email": "COMPLEX",
+  "cold-email": "MEDIUM",
   "expand-step": "COMPLEX",
   "format-for-export": "SIMPLE",
   "step-summary": "SIMPLE",
