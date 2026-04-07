@@ -432,6 +432,22 @@ function SpamWarning({ text }: { text: string }) {
   );
 }
 
+/** Count {A|B} blocks in a string */
+function countSpintax(text: string): number {
+  return (text.match(/\{[^}]+\|[^}]+\}/g) ?? []).length;
+}
+
+function SpintaxBadge({ text }: { text: string }) {
+  const count = countSpintax(text);
+  if (count === 0) return null;
+  const ok = count >= 8 && count <= 12;
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${ok ? "bg-violet-500/10 text-violet-400 border-violet-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"}`}>
+      {count} spintax {ok ? "✓" : `(target 8–12)`}
+    </span>
+  );
+}
+
 function EmailEditor({
   step,
   index,
@@ -451,11 +467,13 @@ function EmailEditor({
           <span className="text-xs font-semibold text-white">Step {index + 1}</span>
           <span className="text-xs text-slate-500">·</span>
           <span className="text-xs text-slate-400">Day {step.waitDays}</span>
+          <SpintaxBadge text={combined} />
         </div>
         {step.annotations.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {step.annotations.map((a, i) => (
               <span key={i} className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${METRIC_COLOR[a.metric]}`} title={a.impact}>
+                {a.part !== "subject" ? <span className="text-[9px] opacity-60 uppercase">{a.part}</span> : null}
                 {METRIC_LABEL[a.metric]}
               </span>
             ))}
@@ -468,9 +486,6 @@ function EmailEditor({
         <div>
           <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
             Subject line
-            {step.subject.includes("{") && (
-              <span className="ml-2 normal-case text-violet-400 font-normal">spintax</span>
-            )}
           </label>
           <Input
             value={step.subject}
@@ -490,8 +505,8 @@ function EmailEditor({
           <Textarea
             value={step.body}
             onChange={(e) => onChange({ ...step, body: e.target.value })}
-            rows={6}
-            className="bg-slate-800 border-white/10 text-white text-sm resize-none font-mono"
+            rows={8}
+            className="bg-slate-800 border-white/10 text-white text-sm resize-y font-mono leading-relaxed"
           />
           {step.annotations.filter((a) => a.part !== "subject").map((a, i) => (
             <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">

@@ -177,7 +177,7 @@ export interface ManifestoOutput {
 // ─── Cold Email ──────────────────────────────────────────────────────────────
 
 export interface EmailAnnotation {
-  part: "subject" | "opener" | "body" | "cta";
+  part: "subject" | "opener" | "body" | "cta" | "closing";
   text: string;
   metric: "open_rate" | "reply_rate" | "engagement" | "click_rate";
   impact: string;
@@ -187,6 +187,7 @@ export interface EmailStep {
   subject: string;
   body: string;
   waitDays: number;
+  spintaxCount?: number;
   annotations: EmailAnnotation[];
 }
 

@@ -9,17 +9,18 @@ import { generateObject } from "ai";
 import { z } from "zod";
 
 const EmailAnnotationSchema = z.object({
-  part: z.enum(["subject", "opener", "body", "cta"]),
-  text: z.string(),
+  part: z.enum(["subject", "opener", "body", "cta", "closing"]),
+  text: z.string().describe("The exact spintax block or sentence being annotated"),
   metric: z.enum(["open_rate", "reply_rate", "engagement", "click_rate"]),
-  impact: z.string(),
+  impact: z.string().describe("Specific, data-backed insight on why this choice improves the metric"),
 });
 
 const EmailStepSchema = z.object({
-  subject: z.string(),
-  body: z.string(),
+  subject: z.string().describe("Subject line with 2-3 spintax blocks using {A|B|C} format"),
+  body: z.string().describe("Full email body as plain text with 4-6 spintax blocks strategically placed. Include opener, 2-3 body sentences, CTA, and closing on separate lines."),
   waitDays: z.number().int().min(0),
-  annotations: z.array(EmailAnnotationSchema),
+  spintaxCount: z.number().int().min(8).max(12).describe("Total number of {A|B|C} spintax blocks in this email (subject + body combined). Must be 8-12."),
+  annotations: z.array(EmailAnnotationSchema).min(4).max(6),
 });
 
 const ColdEmailOutputSchema = z.object({
