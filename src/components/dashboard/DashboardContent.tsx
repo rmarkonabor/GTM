@@ -349,7 +349,7 @@ function StrategyTab({
       {segments?.length ? (
         <section>
           <SectionHeader icon={BarChart3} title="Segments & Positioning" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
             {segments.map((seg, i) => (
               <ExpandableSegmentCard key={i} seg={seg} />
             ))}
