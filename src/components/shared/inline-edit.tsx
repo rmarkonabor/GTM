@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Plus } from "lucide-react";
 
+// Defensive: AI output may return non-strings; coerce before rendering
+const s = (v: unknown): string =>
+  typeof v === "string" ? v : typeof v === "number" ? String(v) : v == null ? "" : JSON.stringify(v);
+
 // ─── EditableText ─────────────────────────────────────────────────────────────
 
 export function EditableText({
@@ -18,12 +22,13 @@ export function EditableText({
   className?: string;
   multiline?: boolean;
 }) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => setLocal(value), [value]);
+  const safe = s(value);
+  const [local, setLocal] = useState(safe);
+  useEffect(() => setLocal(s(value)), [value]);
 
-  if (!editMode) return <span className={className}>{value}</span>;
+  if (!editMode) return <span className={className}>{safe}</span>;
 
-  const commit = () => { if (local !== value) onSave(local); };
+  const commit = () => { if (local !== safe) onSave(local); };
   const base = `bg-transparent border-b border-slate-600 focus:border-violet-500 focus:outline-none w-full ${className}`;
 
   if (multiline) {
@@ -77,7 +82,7 @@ export function EditableChips({
     <div className="flex flex-wrap gap-1">
       {items.map((item, i) => (
         <span key={i} className={`inline-flex items-center gap-1 ${chipClass} px-2 py-0.5 rounded-full text-xs`}>
-          {item}
+          {s(item)}
           {editMode && (
             <button onClick={() => remove(i)} className="text-slate-400 hover:text-red-400 ml-0.5">
               <X className="h-2.5 w-2.5" />
@@ -120,8 +125,9 @@ function EditableListItem({
   item: string; onSave: (v: string) => void; onRemove: () => void;
   editMode: boolean; dotColor: string; textClass: string;
 }) {
-  const [local, setLocal] = useState(item);
-  useEffect(() => setLocal(item), [item]);
+  const safe = s(item);
+  const [local, setLocal] = useState(safe);
+  useEffect(() => setLocal(s(item)), [item]);
 
   return (
     <li className="flex items-start gap-1.5 group">
@@ -130,12 +136,12 @@ function EditableListItem({
         <input
           value={local}
           onChange={(e) => setLocal(e.target.value)}
-          onBlur={() => { if (local !== item) onSave(local); }}
+          onBlur={() => { if (local !== safe) onSave(local); }}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLElement).blur()}
           className={`${textClass} flex-1 bg-transparent border-b border-slate-600 focus:border-violet-500 focus:outline-none`}
         />
       ) : (
-        <span className={`${textClass} flex-1`}>{item}</span>
+        <span className={`${textClass} flex-1`}>{safe}</span>
       )}
       {editMode && (
         <button
