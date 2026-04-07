@@ -33,8 +33,8 @@ Return JSON:
 }
 
 Rules:
-- Include 4-8 competitors total — quality over quantity. Focus on the most significant ones.
-- 1-2 competitors per target market is sufficient. Do not pad.
+- Include exactly 1 competitor per target market — the single most significant direct competitor in that market
+- Maximum 10 competitors total (one per market, capped at 10 markets)
 - targetSegment must EXACTLY match one of the target market names listed above
 - domain must be the actual website domain (e.g. "hubspot.com")
 - location: city and country only (e.g. "San Francisco, US")

@@ -22,7 +22,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "icp-creation": "COMPLEX",
   "target-markets": "COMPLEX",
   "segmentation": "MEDIUM",
-  "competitive-analysis": "MEDIUM",
+  "competitive-analysis": "COMPLEX",
   "manifesto": "COMPLEX",
   "expand-step": "COMPLEX",
   "format-for-export": "SIMPLE",

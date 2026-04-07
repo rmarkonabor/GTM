@@ -55,7 +55,7 @@ export async function runCompetitive(
   const modelId = getModelForTask(llm.provider as "openai" | "anthropic" | "google", "competitive-analysis");
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "competitive-analysis");
 
-  const { object, usage } = await generateObject({ model, schema, prompt, maxOutputTokens: 2000 });
+  const { object, usage } = await generateObject({ model, schema, prompt, maxOutputTokens: 5000 });
   return {
     output: object as CompetitiveAnalysisOutput,
     usage: {
