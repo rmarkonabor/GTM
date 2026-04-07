@@ -183,16 +183,38 @@ export interface EmailAnnotation {
   impact: string;
 }
 
-export interface EmailStep {
+export interface SubjectLineOption {
+  text: string;
+  rationale: string;
+}
+
+export interface ColdEmail {
   subject: string;
   body: string;
   waitDays: number;
-  spintaxCount?: number;
+  angle: string;
   annotations: EmailAnnotation[];
 }
 
+export interface QualityCheck {
+  word_count_email_1: number;
+  feels_human: boolean;
+  no_buzzwords: boolean;
+  prospect_focused: boolean;
+  cta_easy_to_reply: boolean;
+  notes?: string;
+}
+
 export interface ColdEmailOutput {
-  steps: EmailStep[];
+  strategy_summary: string;
+  campaign_brief: string;
+  subject_lines: SubjectLineOption[];
+  email_1: ColdEmail;
+  follow_up_1: ColdEmail;
+  follow_up_2: ColdEmail;
+  break_up_email: ColdEmail;
+  quality_check: QualityCheck;
+  missing_inputs: string[];
 }
 
 // ─── Step orchestration ──────────────────────────────────────────────────────

@@ -2,84 +2,133 @@ export function buildColdEmailPrompt(
   context: string,
   targetMarketName: string,
 ): string {
-  return `You are an elite B2B cold email copywriter. Using the GTM strategy data below, write a 3-step cold email sequence targeting the "${targetMarketName}" market.
+  return `You are a B2B cold email strategist and copywriter. Your job is to write a 4-email outbound sequence for the "${targetMarketName}" market using the GTM strategy data provided.
 
 === GTM STRATEGY CONTEXT ===
 ${context}
 
-=== INSTRUCTIONS ===
+=== YOUR TASK ===
+Write a high-quality 4-email cold outbound sequence: a cold first touch, two follow-ups, and a break-up email.
+Every email must feel like it was written by someone who understands this market, this buyer, and the timing — not a generic AI sales template.
 
-PRIMARY MARKET: "${targetMarketName}" — this is the buyer you are writing to. Use ALL strategy data (ICP firmographics, pain points, buyer personas, competitive positioning, messaging pillars, manifesto) to make every line hyper-relevant.
+---
 
-COLD EMAIL BEST PRACTICES:
-- Subject line: ≤9 words, no clickbait, triggers curiosity or pain recognition
-- Opener: personalised, reference a specific pain point or trigger event — NEVER "Hope this email finds you well"
-- Body: 3–5 lines max, one idea per email, outcome-focused not feature-focused
-- CTA: one specific ask (15-min call, reply, quick question) — NEVER "let me know if interested"
-- No generic buzzwords: "synergy", "leverage", "circle back", "reach out"
-- Plain text tone — no HTML, no bullet lists in body, no bold or italic markers
+## WRITING STANDARDS — EMAIL 1 (Cold First Touch)
 
-SPINTAX FORMAT:
-Use the format {VariantA|VariantB|VariantC} anywhere you want variation.
+These are non-negotiable quality rules for email_1:
 
-SMARTLEAD SPINTAX RULES — follow these exactly:
+1. Total word count: 50–100 words (body only, not subject)
+2. Structure: 3–4 short sentences only
+3. Language: clear, simple, no jargon
+4. Tone: human, direct, commercially aware
+5. Focus: the prospect's world, their problems, their context — not your product
+6. Do not over-explain
+7. Do not lead with a pitch or product description
+8. No buzzwords, fluff, or empty claims (e.g. "cutting-edge", "best-in-class", "game-changing")
+9. Do not ask for a meeting in the first line — earn it
+10. CTA: one specific, low-friction ask (e.g. "Worth a quick chat?", "Does this sound familiar?", "Open to hearing how?")
 
-1. STRATEGIC PLACEMENT ONLY — 8 to 12 spintax blocks per email, spread across these zones:
+---
+
+## SUBJECT LINE STANDARDS
+
+Provide 3 subject line options for email_1 only:
+
+1. Keep them short (≤9 words)
+2. Make them relevant to the prospect's world — their role, their pressure, their context
+3. Avoid clickbait, numbers for the sake of numbers, and generic benefit statements
+4. Each option should use a different angle (pain / curiosity / trigger / specificity)
+
+---
+
+## FOLLOW-UP STANDARDS
+
+Every follow-up must add a NEW reason to reply. Do not resend the same message in different words.
+
+Follow-up angles to use (pick one per email, all three must differ):
+  a. Different pain point from email_1
+  b. Specific proof point or result (only if data exists in the GTM context — never fabricate)
+  c. Useful benchmark or market insight relevant to this buyer
+  d. Short case study or outcome story (1–2 sentences max)
+  e. Simple "close the loop" email (break-up)
+
+follow_up_1 → new angle (pain, proof, or benchmark)
+follow_up_2 → different angle again
+break_up_email → short, direct, close the loop (2–3 sentences max)
+
+---
+
+## PERSONALIZATION STANDARDS
+
+1. Use personalization only when it genuinely improves relevance
+2. Good personalization: company initiative, role responsibility, market pressure, trigger event, segment-level issue
+3. Avoid shallow personalization: "noticed your website", "love what you're doing", "saw your LinkedIn"
+4. Avoid creepy personalization (e.g. referencing specific personal posts unless clearly public and business-relevant)
+
+---
+
+## PROOF STANDARDS
+
+1. Only use metrics that are present in the GTM strategy context provided
+2. If no hard metrics exist, use qualitative proof honestly ("teams like yours", "common in this space")
+3. Never exaggerate
+4. Never imply guaranteed outcomes
+
+---
+
+## SPINTAX RULES
+
+Apply spintax AFTER writing clean, standards-compliant copy.
+Format: {VariantA|VariantB|VariantC}
+
+Rules:
+1. 8–12 spintax blocks per email, distributed across zones:
    - Subject line: 2–3 blocks
    - Opening line: 2–3 blocks
-   - Body paragraphs: 4–6 blocks total (spread across sentences, not every word)
-   - CTA line: 1–2 blocks
+   - Body: 3–5 blocks spread across sentences
+   - CTA: 1–2 blocks
    - Closing/sign-off: 1–2 blocks
 
-2. NEVER spin key value propositions — the core benefit, the specific outcome, the company name stay fixed.
-   BAD:  {We help|Our platform helps|You can use us to help} teams {cut|reduce|lower} {churn|customer attrition|turnover}.
-   GOOD: We help {revenue|customer success|growth} teams cut churn by 30%+ in the first quarter.
+2. Never spin core value propositions, company names, or key outcomes — they stay fixed
 
-3. NEVER create grammatically broken combinations. Every variant must work as a standalone sentence.
-   BAD:  {Quick question|Hope you don't mind me asking|I wanted to ask} — are you currently {using|utilising|working with} a {tool|solution|platform}?
-   (The first two openers don't connect to "— are you currently…" grammatically for all combos.)
-   GOOD: {Quick question|One thing I'm curious about|I had to ask} — are you currently relying on spreadsheets for this?
+3. Every variant must be grammatically correct as a standalone sentence
+   BAD:  {Quick question|Hope you don't mind me asking} — are you currently using a {tool|solution}?
+   GOOD: {Quick question|One thing I keep hearing} — are you still doing this manually?
 
-4. EACH VARIANT must be meaningfully different — not synonyms, different angles, tones, or specifics.
-   BAD:  {reduce|cut|lower|decrease} (same meaning, different word)
-   GOOD: {reduce manual work by 40%|free up 8 hours a week|stop doing this manually}
+4. Each variant must be meaningfully different — not synonyms, different angles or tones
+   BAD:  {reduce|cut|lower} churn
+   GOOD: {reduce churn by 30%|stop losing accounts in month 3|keep more customers past 90 days}
 
-5. BALANCE ACROSS ALL 3 EMAILS — each email in the sequence should have a different tone/angle:
-   - Email 1: Pain-focused, cold first touch
-   - Email 2: Social proof or insight angle, follow-up
-   - Email 3: Break-up email, direct and short
+5. Each email in the sequence must have a different tone:
+   - email_1: Pain-aware, cold first touch, no pitch
+   - follow_up_1: New angle (proof or insight), warmer
+   - follow_up_2: Specific and direct, slightly more assertive
+   - break_up_email: Short, honest, easy to respond to
 
-SPINTAX EXAMPLES (these are patterns to follow, not copy):
+---
 
-Subject spintax:
-  {Still managing [X] manually?|The [X] problem most [role]s ignore|How [Company] fixed [X] in 90 days}
+## SEQUENCE TIMING
 
-Opening spintax:
-  {I came across [Company] and noticed|Saw that [Company] recently|Was looking at [Company]'s [signal]} — {looks like you're scaling fast|impressive growth lately|you're in an interesting space}.
+- email_1: Day 0
+- follow_up_1: Day 4–6
+- follow_up_2: Day 9–12
+- break_up_email: Day 14–18
 
-Body spintax:
-  Most {[role]s|teams like yours|companies at your stage} {struggle with|run into|hit a wall with} [pain point] {when they hit [milestone]|as they scale|without the right system}.
-  {We've helped [similar companies]|Teams like [reference] use us to|[Company] helped [reference] to} [specific outcome].
+---
 
-CTA spintax:
-  {Worth a 15-min call this week?|Open to a quick chat to see if this fits?|Would it make sense to connect briefly?}
+## OUTPUT REQUIREMENTS
 
-Closing spintax:
-  {Either way, happy to share more if useful.|No pressure — just thought it was relevant.|Let me know either way.}
+Return all of the following:
 
-SEQUENCE CADENCE (you decide the exact days based on what makes sense for this market):
-- Step 1: Day 0 — Cold first touch, pain-focused
-- Step 2: Day 3–7 — Follow-up, different angle (social proof, insight, or case study)
-- Step 3: Day 10–14 — Short break-up email, final nudge
-
-ANNOTATIONS:
-For each email, annotate the key spintax choices to explain their metric impact:
-- subject → open_rate: why this subject line variation increases opens
-- opener → reply_rate: why this opener increases replies
-- body → engagement: why this body structure drives engagement
-- cta → reply_rate: why this CTA drives replies
-
-The "impact" field must be a specific, data-backed insight (e.g. "Subject lines referencing a specific pain point average 47% higher open rates vs generic subject lines in B2B outreach").
+1. strategy_summary — 2–3 sentences explaining the strategic angle chosen for this market and why
+2. campaign_brief — what this sequence is designed to achieve and why these specific angles were selected
+3. subject_lines — exactly 3 options for email_1 (with rationale for each)
+4. email_1 — cold first touch (apply writing standards strictly)
+5. follow_up_1 — new angle follow-up
+6. follow_up_2 — second distinct follow-up
+7. break_up_email — short close-the-loop email
+8. quality_check — self-assessment: word count of email_1, feels_human, no_buzzwords, prospect_focused, cta_easy_to_reply, plus any notes
+9. missing_inputs — list of data points that would make this copy more specific/relevant if known (e.g. "specific customer case study for this segment", "current tech stack of target companies")
 
 Output JSON only — no extra prose.`;
 }

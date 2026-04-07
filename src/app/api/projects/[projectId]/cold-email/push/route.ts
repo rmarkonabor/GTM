@@ -17,7 +17,7 @@ const EmailStepSchema = z.object({
 const schema = z.object({
   campaignName: z.string().min(1),
   targetMarketName: z.string().min(1),
-  steps: z.array(EmailStepSchema).length(3),
+  steps: z.array(EmailStepSchema).min(1).max(4),
 });
 
 export async function POST(

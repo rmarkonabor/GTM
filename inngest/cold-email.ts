@@ -12,19 +12,41 @@ const EmailAnnotationSchema = z.object({
   part: z.enum(["subject", "opener", "body", "cta", "closing"]),
   text: z.string().describe("The exact spintax block or sentence being annotated"),
   metric: z.enum(["open_rate", "reply_rate", "engagement", "click_rate"]),
-  impact: z.string().describe("Specific, data-backed insight on why this choice improves the metric"),
+  impact: z.string().describe("Specific insight on why this choice improves the metric"),
 });
 
-const EmailStepSchema = z.object({
-  subject: z.string().describe("Subject line with 2-3 spintax blocks using {A|B|C} format"),
-  body: z.string().describe("Full email body as plain text with 4-6 spintax blocks strategically placed. Include opener, 2-3 body sentences, CTA, and closing on separate lines."),
+const SubjectLineSchema = z.object({
+  text: z.string().describe("Subject line ≤9 words, relevant to prospect's world, not clickbait"),
+  rationale: z.string().describe("Why this angle was chosen for this subject line"),
+});
+
+const ColdEmailSchema = z.object({
+  subject: z.string().describe("Subject line with 2-3 spintax blocks"),
+  body: z.string().describe("Email body as plain text with spintax. Must follow all writing standards."),
   waitDays: z.number().int().min(0),
-  spintaxCount: z.number().int().min(8).max(12).describe("Total number of {A|B|C} spintax blocks in this email (subject + body combined). Must be 8-12."),
-  annotations: z.array(EmailAnnotationSchema).min(4).max(6),
+  angle: z.string().describe("The core angle/hook — what new reason to reply does this email give"),
+  annotations: z.array(EmailAnnotationSchema).min(2).max(4),
+});
+
+const QualityCheckSchema = z.object({
+  word_count_email_1: z.number().int().describe("Word count of email_1 body only (target: 50-100 words)"),
+  feels_human: z.boolean(),
+  no_buzzwords: z.boolean(),
+  prospect_focused: z.boolean(),
+  cta_easy_to_reply: z.boolean(),
+  notes: z.string().optional().describe("Any notes on quality, tradeoffs, or what was constrained"),
 });
 
 const ColdEmailOutputSchema = z.object({
-  steps: z.array(EmailStepSchema).length(3),
+  strategy_summary: z.string().describe("2-3 sentences on the strategic angle chosen for this market"),
+  campaign_brief: z.string().describe("What this sequence achieves and why these angles were selected"),
+  subject_lines: z.array(SubjectLineSchema).length(3).describe("3 subject line options for email_1 only"),
+  email_1: ColdEmailSchema.describe("Cold first touch: 50-100 words, 3-4 sentences, pain-focused, no pitch"),
+  follow_up_1: ColdEmailSchema.describe("Follow-up adding a new reason to reply — different angle from email_1"),
+  follow_up_2: ColdEmailSchema.describe("Second follow-up with yet another distinct angle"),
+  break_up_email: ColdEmailSchema.describe("Short close-the-loop email, 2-3 sentences max"),
+  quality_check: QualityCheckSchema,
+  missing_inputs: z.array(z.string()).describe("Data points that would improve copy relevance if known"),
 });
 
 export const coldEmailGenerator = inngest.createFunction(
@@ -40,12 +62,11 @@ export const coldEmailGenerator = inngest.createFunction(
           coldEmailDraft: {
             status: "ERROR",
             targetMarketName,
-            steps: [],
             error: error?.message ?? "Generation failed. Please try again.",
             startedAt: new Date().toISOString(),
           },
         },
-      }).catch(() => {}); // best-effort — don't throw in failure handler
+      }).catch(() => {});
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +84,6 @@ export const coldEmailGenerator = inngest.createFunction(
           coldEmailDraft: {
             status: "RUNNING",
             targetMarketName,
-            steps: [],
             startedAt: new Date().toISOString(),
           },
         },
@@ -93,10 +113,10 @@ export const coldEmailGenerator = inngest.createFunction(
         model,
         schema: ColdEmailOutputSchema,
         prompt,
-        abortSignal: AbortSignal.timeout(90_000), // 90s max — fail fast rather than hang
+        abortSignal: AbortSignal.timeout(90_000),
       });
 
-      return object.steps;
+      return object;
     });
 
     // Save result
@@ -107,9 +127,9 @@ export const coldEmailGenerator = inngest.createFunction(
           coldEmailDraft: {
             status: "COMPLETE",
             targetMarketName,
-            steps: result,
             startedAt: new Date().toISOString(),
             completedAt: new Date().toISOString(),
+            ...result,
           },
         },
       });
