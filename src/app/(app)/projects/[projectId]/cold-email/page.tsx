@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square, Info } from "lucide-react";
+import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,20 @@ const PROGRESS_LABEL: Record<DraftProgress, string> = {
   break_up_email: "Writing break-up email...",
 };
 
+type AwaitingStep = "strategy" | "email_1" | "follow_up_1" | "follow_up_2";
+
+const APPROVE_LABEL: Record<AwaitingStep, string> = {
+  strategy:    "Approve strategy & write Email 1",
+  email_1:     "Approve Email 1 & write Follow-up 1",
+  follow_up_1: "Approve Follow-up 1 & write Follow-up 2",
+  follow_up_2: "Approve Follow-up 2 & write break-up email",
+};
+
 interface ColdEmailDraft {
-  status: "PENDING" | "RUNNING" | "COMPLETE" | "ERROR" | "CANCELLED";
+  status: "PENDING" | "RUNNING" | "AWAITING_APPROVAL" | "COMPLETE" | "ERROR" | "CANCELLED";
   targetMarketName: string;
   progress?: DraftProgress;
+  awaitingApprovalFor?: AwaitingStep;
   error?: string;
   startedAt: string;
   completedAt?: string;
@@ -300,10 +310,10 @@ export default function ColdEmailPage() {
     }
   }, [companyName, selectedMarket]);
 
-  // Polling
+  // Polling — active while PENDING, RUNNING, or transitioning out of AWAITING_APPROVAL
   useEffect(() => {
-    const isRunning = draft?.status === "PENDING" || draft?.status === "RUNNING";
-    if (!isRunning) {
+    const shouldPoll = draft?.status === "PENDING" || draft?.status === "RUNNING";
+    if (!shouldPoll) {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
@@ -320,6 +330,9 @@ export default function ColdEmailPage() {
         initEmailsFromDraft(d);
         if (d.status === "COMPLETE" && d.email_1) {
           toast.success("Email sequence ready!");
+          clearInterval(pollRef.current!); pollRef.current = null;
+        } else if (d.status === "AWAITING_APPROVAL") {
+          // Step completed — stop polling until user approves
           clearInterval(pollRef.current!); pollRef.current = null;
         } else if (d.status === "ERROR") {
           toast.error(d.error ?? "Generation failed. Please try again.");
@@ -363,6 +376,27 @@ export default function ColdEmailPage() {
     toast("Generation stopped.");
   }, [projectId]);
 
+  const [approving, setApproving] = useState(false);
+
+  const handleApprove = useCallback(async () => {
+    setApproving(true);
+    // Optimistically switch to RUNNING so polling starts
+    setDraft((prev) => prev ? { ...prev, status: "RUNNING", awaitingApprovalFor: undefined } : null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/cold-email`, { method: "PATCH" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message ?? "Failed to approve step");
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+      // Revert optimistic update on failure
+      setDraft((prev) => prev ? { ...prev, status: "AWAITING_APPROVAL" } : null);
+    } finally {
+      setApproving(false);
+    }
+  }, [projectId]);
+
   const handlePush = useCallback(async () => {
     if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
     const subjectForEmail1 = draft?.subject_lines?.[selectedSubjectIdx]?.text ?? emails.email_1?.subject ?? "";
@@ -398,6 +432,8 @@ export default function ColdEmailPage() {
   }, [campaignName, emails, selectedSubjectIdx, draft, selectedMarket, projectId]);
 
   const generating = draft?.status === "PENDING" || draft?.status === "RUNNING";
+  const isAwaiting = draft?.status === "AWAITING_APPROVAL";
+  const isActive = generating || isAwaiting; // sequence in progress (block regenerate)
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -424,7 +460,7 @@ export default function ColdEmailPage() {
                 Complete the Target Markets step first.
               </p>
             ) : (
-              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={generating}>
+              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={isActive}>
                 <SelectTrigger className="bg-slate-800 border-white/15 text-white">
                   <SelectValue placeholder="Select a market…" />
                 </SelectTrigger>
@@ -440,7 +476,7 @@ export default function ColdEmailPage() {
           </div>
           <Button
             onClick={handleGenerate}
-            disabled={generating || !selectedMarket || markets.length === 0}
+            disabled={isActive || !selectedMarket || markets.length === 0}
             className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shrink-0"
           >
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -448,6 +484,7 @@ export default function ColdEmailPage() {
           </Button>
         </div>
 
+        {/* Generating banner */}
         {generating && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
             <div className="flex items-center gap-2 text-xs text-violet-400">
@@ -463,6 +500,33 @@ export default function ColdEmailPage() {
               <Square className="h-3 w-3 fill-current" />
               Stop
             </button>
+          </div>
+        )}
+
+        {/* Approval banner */}
+        {isAwaiting && draft.awaitingApprovalFor && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              Review the output below, then approve to continue.
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleStop}
+                className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+              >
+                Stop
+              </button>
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                disabled={approving}
+                className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs gap-1.5 h-7 px-3"
+              >
+                {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                {APPROVE_LABEL[draft.awaitingApprovalFor]}
+              </Button>
+            </div>
           </div>
         )}
 
