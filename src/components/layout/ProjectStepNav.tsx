@@ -108,10 +108,12 @@ export function ProjectStepNav({ project }: { project: Project }) {
         <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
           Execution
         </p>
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-600">
-          <Rocket className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 truncate">Coming soon</span>
-        </div>
+        <StepLink
+          href={`/projects/${project.id}/cold-email`}
+          isActive={pathname === `/projects/${project.id}/cold-email`}
+          icon={Rocket}
+          label="Cold Email"
+        />
       </nav>
     </aside>
   );

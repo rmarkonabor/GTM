@@ -16,6 +16,7 @@ const EmailStepSchema = z.object({
 
 const schema = z.object({
   campaignName: z.string().min(1),
+  targetMarketName: z.string().min(1),
   steps: z.array(EmailStepSchema).length(3),
 });
 
@@ -45,13 +46,25 @@ export async function POST(
     const { apiKey } = JSON.parse(slRaw) as { apiKey: string };
 
     const body = await req.json();
-    const { campaignName, steps } = schema.parse(body);
+    const { campaignName, targetMarketName, steps } = schema.parse(body);
 
+    // Create campaign + add sequence
     const campaign = await createCampaign(apiKey, campaignName);
-
     for (let i = 0; i < steps.length; i++) {
       await addSequenceStep(apiKey, campaign.id, steps[i], i + 1);
     }
+
+    // Record this campaign on the project
+    const existing = (project.smartleadCampaigns as { campaignId: number; name: string; targetMarketName: string; pushedAt: string }[] | null) ?? [];
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        smartleadCampaigns: [
+          ...existing,
+          { campaignId: campaign.id, name: campaignName, targetMarketName, pushedAt: new Date().toISOString() },
+        ],
+      },
+    });
 
     return NextResponse.json({ campaignId: campaign.id });
   } catch (err) {
