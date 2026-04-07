@@ -10,85 +10,81 @@ import { z } from "zod";
 
 const EmailAnnotationSchema = z.object({
   part: z.enum(["subject", "opener", "body", "cta", "closing"]),
-  text: z.string().describe("The exact spintax block or sentence being annotated"),
+  text: z.string(),
   metric: z.enum(["open_rate", "reply_rate", "engagement", "click_rate"]),
-  impact: z.string().describe("Specific insight on why this choice improves the metric"),
+  impact: z.string(),
 });
 
 const SubjectLineSchema = z.object({
-  text: z.string().describe("Subject line ≤9 words, relevant to prospect's world, not clickbait"),
-  rationale: z.string().describe("Why this angle was chosen for this subject line"),
+  text: z.string(),
+  rationale: z.string(),
 });
 
 const ColdEmailSchema = z.object({
-  subject: z.string().describe("Subject line with 2-3 spintax blocks"),
-  body: z.string().describe("Email body as plain text with spintax. Must follow all writing standards."),
+  subject: z.string(),
+  body: z.string(),
   waitDays: z.number().int().min(0),
-  angle: z.string().describe("The core angle/hook — what new reason to reply does this email give"),
+  angle: z.string(),
   annotations: z.array(EmailAnnotationSchema).min(1).max(6),
 });
 
 const QualityCheckSchema = z.object({
-  word_count_email_1: z.number().int().describe("Word count of email_1 body only (target: 50-100 words)"),
+  word_count_email_1: z.number().int(),
   feels_human: z.boolean(),
   no_buzzwords: z.boolean(),
   prospect_focused: z.boolean(),
   cta_easy_to_reply: z.boolean(),
-  notes: z.string().optional().describe("Any notes on quality, tradeoffs, or what was constrained"),
+  notes: z.string().optional(),
 });
 
 const ColdEmailOutputSchema = z.object({
-  strategy_summary: z.string().describe("2-3 sentences on the strategic angle chosen for this market"),
-  campaign_brief: z.string().describe("What this sequence achieves and why these angles were selected"),
-  subject_lines: z.array(SubjectLineSchema).min(1).max(3).describe("3 subject line options for email_1 only"),
-  email_1: ColdEmailSchema.describe("Cold first touch: 50-100 words, 3-4 sentences, pain-focused, no pitch"),
-  follow_up_1: ColdEmailSchema.describe("Follow-up adding a new reason to reply — different angle from email_1"),
-  follow_up_2: ColdEmailSchema.describe("Second follow-up with yet another distinct angle"),
-  break_up_email: ColdEmailSchema.describe("Short close-the-loop email, 2-3 sentences max"),
+  strategy_summary: z.string(),
+  campaign_brief: z.string(),
+  subject_lines: z.array(SubjectLineSchema).min(1).max(3),
+  email_1: ColdEmailSchema,
+  follow_up_1: ColdEmailSchema,
+  follow_up_2: ColdEmailSchema,
+  break_up_email: ColdEmailSchema,
   quality_check: QualityCheckSchema,
-  missing_inputs: z.array(z.string()).describe("Data points that would improve copy relevance if known"),
+  missing_inputs: z.array(z.string()),
 });
 
-/** Wrap a promise with a manual timeout that's universally reliable across all environments. */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+/** Race a promise against a hard timeout using setTimeout — works in all environments. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(message)), ms)
+      setTimeout(() => reject(new Error(`[cold-email] Timed out after ${ms / 1000}s (${label})`)), ms)
     ),
   ]);
 }
 
-async function markDraft(
-  projectId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any
-): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function saveDraft(projectId: string, payload: any): Promise<void> {
   await prisma.project.update({
     where: { id: projectId },
     data: { coldEmailDraft: payload },
-  }).catch(() => {});
+  });
 }
 
 export const coldEmailGenerator = inngest.createFunction(
   {
     id: "cold-email-generator",
-    retries: 1,
+    retries: 0, // no Inngest retries — we handle errors ourselves and report immediately
     triggers: [{ event: "gtm/cold-email.generate" }],
-    // onFailure: last-resort safety net. Catches cases where the step itself
-    // couldn't update the DB (e.g. DB unreachable during error handling).
-    // In Inngest v4, original event data is at event.data.event.data.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onFailure: async ({ event, error }: any) => {
+      // Inngest v4: original event is at event.data.event.data, not event.data
       const original = (event?.data?.event?.data ?? {}) as { projectId?: string; targetMarketName?: string };
       const { projectId, targetMarketName } = original;
+      console.error("[cold-email] onFailure fired", { projectId, error: error?.message });
       if (!projectId) return;
-      await markDraft(projectId, {
+      await saveDraft(projectId, {
         status: "ERROR",
         targetMarketName: targetMarketName ?? "",
         error: error?.message ?? "Generation failed. Please try again.",
         startedAt: new Date().toISOString(),
-      });
+      }).catch((e) => console.error("[cold-email] onFailure DB write failed", e));
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,61 +94,79 @@ export const coldEmailGenerator = inngest.createFunction(
       targetMarketName: string;
     };
 
+    console.log("[cold-email] starting generation", { projectId, targetMarketName });
+
     await step.run("generate-cold-email", async () => {
-      // Mark RUNNING at the start of the step
-      await markDraft(projectId, {
+      // Step 1: mark RUNNING
+      await saveDraft(projectId, {
         status: "RUNNING",
         targetMarketName,
         startedAt: new Date().toISOString(),
       });
+      console.log("[cold-email] marked RUNNING", { projectId });
 
       try {
-        const project = await prisma.project.findUnique({
-          where: { id: projectId },
-          include: { user: true },
-        });
-
+        // Step 2: load project + user config
+        const project = await withTimeout(
+          prisma.project.findUnique({ where: { id: projectId }, include: { user: true } }),
+          10_000,
+          "DB load"
+        );
         if (!project) throw new Error("Project not found");
 
         const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
-        if (!llmRaw) throw new Error("No LLM API key configured. Add it in Settings.");
+        if (!llmRaw) throw new Error("No LLM API key configured — add it in Settings.");
         const llmPreference = JSON.parse(llmRaw) as LLMPreference;
+        console.log("[cold-email] loaded config, provider:", llmPreference.provider);
 
-        const ctx = await buildContextFromDB(projectId);
+        // Step 3: build context
+        const ctx = await withTimeout(buildContextFromDB(projectId), 10_000, "context build");
         if (!ctx) throw new Error("Project context not found");
-
         const context = buildStepContext(ctx);
-        const prompt = buildColdEmailPrompt(context, targetMarketName);
+        console.log("[cold-email] context built, chars:", context.length);
+
+        // Step 4: generate
         const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
+        const prompt = buildColdEmailPrompt(context, targetMarketName);
+        console.log("[cold-email] calling LLM, prompt chars:", prompt.length);
 
         const { object } = await withTimeout(
-          generateObject({ model, schema: ColdEmailOutputSchema, prompt }),
-          85_000,
-          "LLM response timed out after 85 seconds. Please try again."
+          generateObject({
+            model,
+            schema: ColdEmailOutputSchema,
+            prompt,
+            maxRetries: 0, // no silent AI SDK retries — fail fast, show the real error
+          }),
+          80_000,
+          "LLM generateObject"
         );
+        console.log("[cold-email] LLM returned, saving COMPLETE");
 
-        // Persist COMPLETE immediately — don't rely on a separate step
-        await prisma.project.update({
-          where: { id: projectId },
-          data: {
-            coldEmailDraft: {
-              status: "COMPLETE",
-              targetMarketName,
-              startedAt: new Date().toISOString(),
-              completedAt: new Date().toISOString(),
-              ...object,
-            },
-          },
+        // Step 5: save result
+        await saveDraft(projectId, {
+          status: "COMPLETE",
+          targetMarketName,
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          ...object,
         });
+        console.log("[cold-email] saved COMPLETE", { projectId });
+
       } catch (err) {
-        // Write ERROR to DB directly — don't rely solely on onFailure
-        await markDraft(projectId, {
+        const message = err instanceof Error ? err.message : "Generation failed. Please try again.";
+        console.error("[cold-email] generation error:", message, err);
+
+        // Write ERROR to DB — this is the primary error path, don't rely on onFailure
+        await saveDraft(projectId, {
           status: "ERROR",
           targetMarketName,
-          error: err instanceof Error ? err.message : "Generation failed. Please try again.",
+          error: message,
           startedAt: new Date().toISOString(),
+        }).catch((dbErr) => {
+          console.error("[cold-email] CRITICAL: failed to write ERROR status to DB:", dbErr);
         });
-        throw err; // let Inngest know the step failed (triggers retry/onFailure)
+
+        throw err; // let Inngest know the step failed
       }
     });
 
