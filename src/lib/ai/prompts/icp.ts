@@ -1,16 +1,19 @@
-export function buildICPPrompt(context: string, industries: object[]): string {
-  return `You are a senior GTM strategist. Based on the company profile, priority industries, AND target markets defined below, create detailed Ideal Customer Profiles (ICPs).
+export function buildICPPrompt(context: string, industries: object[], targetMarkets: object[]): string {
+  return `You are a senior GTM strategist. Based on the company profile, target markets, and priority industries below, create detailed Ideal Customer Profiles (ICPs).
 
-The ICPs must be grounded in the target markets — each ICP should represent the ideal company within the context of those specific markets, not just a generic industry profile.
+IMPORTANT: The ICPs must be grounded in the TARGET MARKETS data. Each ICP should represent the ideal company within the context of those specific target markets — their urgent problems, macro trends, and market dynamics. Do NOT create generic industry profiles that ignore the target market analysis.
 
 ${context}
 
 Priority industries (for reference):
 ${JSON.stringify(industries, null, 2)}
 
-Create one ICP per priority industry, shaped by the target markets above.
+Target markets (PRIMARY INPUT — each ICP must align to these):
+${JSON.stringify(targetMarkets, null, 2)}
 
-CRITICAL — Use the same 3-way industry separation as Industry Priority:
+Create one ICP per target market. Each ICP should directly address the urgent and important problems identified in that market.
+
+CRITICAL — Each ICP must include:
 
 1. standardIndustry: The EXACT industry name used in LinkedIn and Apollo.io databases.
    Examples: "Computer Software", "Information Technology and Services", "Financial Services",
@@ -23,13 +26,28 @@ CRITICAL — Use the same 3-way industry separation as Industry Priority:
    Examples: "HR Tech", "Legal Tech", "Fintech for SMBs", "Healthcare SaaS", "Construction Tech"
    (This is how you describe the space in outreach copy)
 
-3. keywords: 3–6 specific terms, tools, or processes that buyers in this niche use.
-   Examples: ["HRIS", "payroll", "workforce management"] or ["contract management", "e-discovery"]
-   (Used for keyword targeting and personalization)
+3. keywords: 5–10 industry keywords and product category names that describe WHAT THIS NICHE IS — the market categories, product types, and industry segments that define this space.
+   These are used as Apollo/LinkedIn search filters to FIND companies in this space.
+
+   KEYWORD RULES (strictly follow):
+   - Use PRODUCT CATEGORY NAMES and INDUSTRY SEGMENT TERMS only
+   - Good examples: "payroll software", "contract management", "digital lending", "field service management", "HR software"
+   - Do NOT include: specific tool/vendor names (Workday, Salesforce, SAP), methodologies (agile, scrum, lean), compliance acronyms (KYC, AML, PCI), or process names (onboarding, reconciliation)
+   - Do NOT include: marketing terms, problem descriptions, or buzzwords
+   - Do NOT include: generic words like "software", "technology", "platform", "SaaS", "enterprise" on their own
+   - Think: "What product category or industry segment label would appear in a company's LinkedIn description or Apollo tag?"
+
+   Examples by vertical:
+     HR Tech → ["HR software", "payroll software", "applicant tracking", "workforce management", "talent management", "employee engagement", "performance management"]
+     Legal Tech → ["contract management software", "legal software", "document management", "legal billing", "case management software"]
+     Fintech → ["payment processing", "digital banking", "lending software", "financial services software", "banking software", "embedded finance"]
+     Construction → ["construction software", "project management software", "field service management", "construction technology", "building information modeling"]
+     Marketing Agency → ["digital marketing", "SEO services", "paid media", "content marketing", "marketing services", "creative agency"]
 
 For each ICP also define:
 - Firmographics: Apollo.io/ZoomInfo-compatible company-level filters shaped by the target markets
-- Buyer Personas: Person-level targeting for decision makers in those markets
+- apolloKeywordTags: 5–8 lowercase tags that Apollo indexes as company tags for this niche (what companies DO or SELL, not company names)
+- Buyer Personas: Person-level targeting for decision makers — their goals and challenges should directly reference the target market's urgent/important problems
 
 Return JSON:
 {
@@ -37,7 +55,7 @@ Return JSON:
     {
       "standardIndustry": "Computer Software",
       "niche": "HR Tech",
-      "keywords": ["HRIS", "payroll", "workforce management", "employee onboarding"],
+      "keywords": ["HR software", "payroll software", "workforce management", "talent management", "employee engagement", "performance management", "HR technology"],
       "firmographics": {
         "companySize": ["51,100", "101,200", "201,500"],
         "revenue": ["$5M-$50M"],
@@ -45,7 +63,7 @@ Return JSON:
         "industries": ["Computer Software"],
         "technologies": ["Workday", "BambooHR"],
         "businessModels": ["B2B", "SaaS"],
-        "apolloKeywordTags": ["human resources software", "hr technology", "payroll software", "workforce management", "saas"]
+        "apolloKeywordTags": ["human resources software", "hr technology", "payroll software", "workforce management", "talent management"]
       },
       "buyerPersonas": [
         {
@@ -62,19 +80,13 @@ Return JSON:
 }
 
 Rules:
+- Create ONE ICP per target market — each grounded in that market's problems and trends
 - standardIndustry must be a real LinkedIn/Apollo database value — never a niche label like "HR Tech"
 - industries in firmographics must also use standardIndustry values only
+- keywords must be 5–10 PRODUCT CATEGORY NAMES and INDUSTRY SEGMENT TERMS — NOT specific tool names, vendor names, methodologies, compliance acronyms, or generic standalone words like "software", "technology", "platform", "SaaS"
+- apolloKeywordTags: 5–8 lowercase terms describing what companies in this space DO or SELL
 - Apollo seniority values: "owner", "founder", "c_suite", "partner", "vp", "head", "director", "manager", "senior", "entry"
 - companySize must use Apollo ranges: "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
-- apolloKeywordTags: 3–6 lowercase keywords that Apollo indexes as company tags for this industry/niche.
-  These power Apollo's q_organization_keyword_tags[] filter. Use terms that describe what companies in this
-  space DO or SELL, not company names. Examples by vertical:
-    HR Tech → ["human resources software", "hr technology", "payroll software", "workforce management"]
-    Legal Tech → ["legal software", "contract management", "e-discovery", "legal technology"]
-    Fintech → ["financial technology", "payments", "banking software", "fintech"]
-    Healthcare → ["health technology", "electronic health records", "healthcare software", "medical software"]
-    Construction → ["construction software", "project management", "construction technology"]
-  Use the niche + standardIndustry as anchors but express them as lowercase searchable tags.
-- Be specific and actionable — these filters will be tested against real Apollo databases
+- Buyer persona goals/challenges MUST reference the target market's urgent and important problems
 - Return ONLY JSON, no markdown.`;
 }

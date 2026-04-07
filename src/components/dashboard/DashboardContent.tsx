@@ -64,9 +64,14 @@ interface ICP {
 
 interface Competitor {
   name: string;
+  domain?: string;
+  location?: string;
   valueProp: string;
-  targetSegment: string;
+  keyOfferings?: string[];
+  whereTheyWin?: string[];
   whereClientWins: string[];
+  targetSegment: string;
+  pricingModel?: string;
 }
 
 interface Segment {
@@ -161,14 +166,14 @@ export function DashboardContent({ project, readOnly, heroExtra }: DashboardCont
             {project.websiteUrl}
           </div>
           {manifesto?.tagline ? (
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{manifesto.tagline}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{str(manifesto.tagline)}</h1>
           ) : (
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{profile?.name ?? "Your Strategy"}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{str(profile?.name ?? "Your Strategy")}</h1>
           )}
           {manifesto?.elevatorPitch ? (
-            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{manifesto.elevatorPitch}</p>
+            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{str(manifesto.elevatorPitch)}</p>
           ) : profile?.description ? (
-            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{profile.description}</p>
+            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{str(profile.description)}</p>
           ) : null}
 
           <div className="mt-6 flex items-center gap-3 flex-wrap">
@@ -249,11 +254,11 @@ function StrategyTab({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardLabel>Who We Serve</CardLabel>
-            <p className="text-slate-300 text-sm leading-relaxed">{manifesto.who}</p>
+            <p className="text-slate-300 text-sm leading-relaxed">{str(manifesto.who)}</p>
           </Card>
           <Card>
             <CardLabel>Why Choose Us</CardLabel>
-            <p className="text-slate-300 text-sm leading-relaxed">{manifesto.whyChooseThem}</p>
+            <p className="text-slate-300 text-sm leading-relaxed">{str(manifesto.whyChooseThem)}</p>
           </Card>
         </div>
       )}
@@ -263,10 +268,10 @@ function StrategyTab({
         <section>
           <SectionHeader icon={MessageSquare} title="Messaging Pillars" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {manifesto.messagingPillars.map((p) => (
-              <Card key={p.pillar}>
-                <span className="inline-block bg-violet-500/10 text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">{p.pillar}</span>
-                <p className="font-semibold text-white text-sm">{p.headline}</p>
+            {manifesto.messagingPillars.map((p, i) => (
+              <Card key={i}>
+                <span className="inline-block bg-violet-500/10 text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">{str(p.pillar)}</span>
+                <p className="font-semibold text-white text-sm">{str(p.headline)}</p>
               </Card>
             ))}
           </div>
@@ -279,15 +284,15 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Building2} title="Priority Industries" />
           <div className="space-y-3">
-            {industries?.sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 5).map((ind) => (
-              <Card key={ind.standardIndustry}>
+            {industries?.sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 5).map((ind, i) => (
+              <Card key={i}>
                 <div className="flex items-start justify-between mb-1">
-                  <p className="font-semibold text-white text-sm">{ind.niche}</p>
-                  <span className={`text-xs font-medium ${FIT_COLOR[ind.estimatedMarketFit] ?? "text-slate-400"}`}>
-                    {ind.estimatedMarketFit}
+                  <p className="font-semibold text-white text-sm">{str(ind.niche)}</p>
+                  <span className={`text-xs font-medium ${FIT_COLOR[str(ind.estimatedMarketFit)] ?? "text-slate-400"}`}>
+                    {str(ind.estimatedMarketFit)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mb-2">{ind.standardIndustry}</p>
+                <p className="text-xs text-slate-500 mb-2">{str(ind.standardIndustry)}</p>
                 <div className="flex flex-wrap gap-1">
                   {ind.painPoints.slice(0, 2).map((pp, i) => (
                     <span key={i} className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">{str(pp)}</span>
@@ -302,11 +307,11 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Target} title="Target Markets" />
           <div className="space-y-3">
-            {markets?.sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 5).map((mkt) => (
-              <Card key={mkt.name}>
+            {markets?.sort((a, b) => (b.priorityScore as number) - (a.priorityScore as number)).slice(0, 5).map((mkt, i) => (
+              <Card key={i}>
                 <div className="flex items-start justify-between mb-1">
-                  <p className="font-semibold text-white text-sm">{mkt.name}</p>
-                  <span className="text-xs font-bold text-violet-400">{mkt.priorityScore}/10</span>
+                  <p className="font-semibold text-white text-sm">{str(mkt.name)}</p>
+                  <span className="text-xs font-bold text-violet-400">{String(mkt.priorityScore ?? "")}/10</span>
                 </div>
                 <div className="space-y-1 mt-2">
                   {mkt.urgentProblems.slice(0, 2).map((p, i) => (
@@ -325,20 +330,20 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Users} title="Ideal Customers" />
           <div className="space-y-3">
-            {icps?.slice(0, 5).map((icp) => (
-              <Card key={icp.niche}>
-                <p className="font-semibold text-white text-sm mb-1">{icp.niche}</p>
-                <p className="text-xs text-slate-500 mb-2">{icp.firmographics.geographies?.slice(0, 2).join(", ")}</p>
-                {icp.keywords?.length > 0 && (
+            {icps?.slice(0, 5).map((icp, i) => (
+              <Card key={i}>
+                <p className="font-semibold text-white text-sm mb-1">{str(icp.niche)}</p>
+                <p className="text-xs text-slate-500 mb-2">{icp.firmographics?.geographies?.slice(0, 2).map(str).join(", ")}</p>
+                {(icp.keywords?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {icp.keywords.slice(0, 4).map((kw, i) => (
-                      <span key={i} className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{str(kw)}</span>
+                    {icp.keywords.slice(0, 4).map((kw, j) => (
+                      <span key={j} className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{str(kw)}</span>
                     ))}
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1">
-                  {icp.buyerPersonas.slice(0, 2).map((bp) => (
-                    <span key={bp.title} className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full">{bp.title}</span>
+                  {icp.buyerPersonas?.slice(0, 2).map((bp, j) => (
+                    <span key={j} className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full">{str(bp.title)}</span>
                   ))}
                 </div>
               </Card>
@@ -351,9 +356,9 @@ function StrategyTab({
       {segments?.length ? (
         <section>
           <SectionHeader icon={BarChart3} title="Segments & Positioning" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {segments.map((seg) => (
-              <ExpandableSegmentCard key={seg.name} seg={seg} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            {segments.map((seg, i) => (
+              <ExpandableSegmentCard key={i} seg={seg} />
             ))}
           </div>
         </section>
@@ -363,33 +368,10 @@ function StrategyTab({
       {competitors?.length ? (
         <section>
           <SectionHeader icon={Swords} title="Competitive Landscape" />
-          <div className="overflow-x-auto rounded-xl border border-white/10">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-slate-900">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Competitor</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Market</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Their Play</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase">Where We Win</th>
-                </tr>
-              </thead>
-              <tbody>
-                {competitors.slice(0, 8).map((c) => (
-                  <tr key={c.name} className="border-b border-white/5 hover:bg-slate-800/30">
-                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{c.name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{c.targetSegment}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs max-w-xs">{c.valueProp}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {c.whereClientWins.slice(0, 2).map((w, i) => (
-                          <span key={i} className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">{str(w)}</span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            {competitors.map((c, i) => (
+              <CompetitorCard key={i} competitor={c} />
+            ))}
           </div>
         </section>
       ) : null}
@@ -524,30 +506,82 @@ function EmailEditor({
   );
 }
 
+interface ColdEmailDraft {
+  status: "PENDING" | "RUNNING" | "COMPLETE" | "ERROR";
+  targetMarketName: string;
+  steps: EmailStep[];
+  error?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
 function ExecutionTab({ project }: { project: DashboardProject }) {
   const stepMap = buildStepMap(project.steps);
   const markets = (stepMap.TARGET_MARKETS as { markets: { name: string }[] } | undefined)?.markets ?? [];
 
   const [selectedMarket, setSelectedMarket] = useState<string>("");
-  const [generating, setGenerating] = useState(false);
+  const [draft, setDraft] = useState<ColdEmailDraft | null>(null);
   const [emailSteps, setEmailSteps] = useState<EmailStep[]>([]);
   const [campaignName, setCampaignName] = useState("");
   const [pushing, setPushing] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Debounced spam check: re-runs whenever emailSteps change
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // On mount: load any existing saved draft
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      // spam check is done inline in SpamWarning — no extra state needed
-    }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [emailSteps]);
+    fetch(`/api/projects/${project.id}/cold-email`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.draft) {
+          const d = data.draft as ColdEmailDraft;
+          setDraft(d);
+          if (d.status === "COMPLETE" && d.steps?.length) {
+            setEmailSteps(d.steps);
+            setCampaignName(`${project.companyProfile?.name ?? "Campaign"} — ${d.targetMarketName} Sequence`);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [project.id, project.companyProfile?.name]);
+
+  // Poll while PENDING or RUNNING — continues even if user switches tabs
+  useEffect(() => {
+    const isRunning = draft?.status === "PENDING" || draft?.status === "RUNNING";
+    if (!isRunning) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    if (pollRef.current) return; // already polling
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/projects/${project.id}/cold-email`);
+        const data = await res.json();
+        if (!data.draft) return;
+        const d = data.draft as ColdEmailDraft;
+        setDraft(d);
+        if (d.status === "COMPLETE" && d.steps?.length) {
+          setEmailSteps(d.steps);
+          setCampaignName(`${project.companyProfile?.name ?? "Campaign"} — ${d.targetMarketName} Sequence`);
+          toast.success("Email sequence ready!");
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+        } else if (d.status === "ERROR") {
+          toast.error(d.error ?? "Generation failed. Please try again.");
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+        }
+      } catch { /* network blip — keep polling */ }
+    }, 3000);
+
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+  }, [draft?.status, project.id, project.companyProfile?.name]);
 
   const handleGenerate = useCallback(async () => {
     if (!selectedMarket) { toast.warning("Select a target market first."); return; }
-    setGenerating(true);
     setEmailSteps([]);
+    setDraft({ status: "PENDING", targetMarketName: selectedMarket, steps: [], startedAt: new Date().toISOString() });
     try {
       const res = await fetch(`/api/projects/${project.id}/cold-email`, {
         method: "POST",
@@ -555,16 +589,16 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
         body: JSON.stringify({ targetMarketName: selectedMarket }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message ?? "Failed to generate emails");
-      setEmailSteps(data.steps);
-      setCampaignName(`${project.companyProfile?.name ?? "Campaign"} — ${selectedMarket} Sequence`);
-      toast.success("Email sequence generated!");
+      if (!res.ok) {
+        setDraft(null);
+        throw new Error(data.error?.message ?? "Failed to start generation");
+      }
+      toast("Generating in background — you can switch tabs freely.");
     } catch (err) {
       toast.error((err as Error).message);
-    } finally {
-      setGenerating(false);
+      setDraft(null);
     }
-  }, [selectedMarket, project.id, project.companyProfile?.name]);
+  }, [selectedMarket, project.id]);
 
   const handlePush = useCallback(async () => {
     if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
@@ -588,6 +622,8 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
     }
   }, [campaignName, emailSteps, project.id]);
 
+  const generating = draft?.status === "PENDING" || draft?.status === "RUNNING";
+
   if (markets.length === 0) {
     return (
       <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center">
@@ -607,13 +643,13 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
         </div>
 
         <p className="text-slate-400 text-sm leading-relaxed">
-          Pick a target market and generate a 3-step cold email sequence grounded in your GTM strategy. Edit inline before pushing to Smartlead.
+          Pick a target market and generate a 3-step cold email sequence grounded in your GTM strategy. Generation runs in the background — feel free to navigate away and come back.
         </p>
 
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <label className="text-xs text-slate-400 block mb-1.5">Target Market</label>
-            <Select value={selectedMarket} onValueChange={setSelectedMarket}>
+            <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={generating}>
               <SelectTrigger className="bg-slate-800 border-white/15 text-white">
                 <SelectValue placeholder="Select a market…" />
               </SelectTrigger>
@@ -632,9 +668,17 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
             className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shrink-0"
           >
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {generating ? "Generating…" : "Generate Sequence"}
+            {generating ? "Generating…" : emailSteps.length > 0 ? "Regenerate" : "Generate Sequence"}
           </Button>
         </div>
+
+        {/* Status banner while running */}
+        {generating && (
+          <div className="flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-400">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            Generating your email sequence in the background. You can safely switch tabs — it will be here when you return.
+          </div>
+        )}
 
         {/* Annotation legend */}
         {emailSteps.length === 0 && !generating && (
@@ -696,6 +740,112 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
   );
 }
 
+// ─── Competitor Card ────────────────────────────────────────────────────────
+
+function CompetitorCard({ competitor: c }: { competitor: Competitor }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+      {/* Header — always visible */}
+      <button onClick={() => setOpen(!open)} className="w-full text-left p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <p className="font-semibold text-white">{str(c.name)}</p>
+              {c.pricingModel && (
+                <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-white/10">
+                  {str(c.pricingModel)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {c.domain && (
+                <a
+                  href={`https://${str(c.domain)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  {str(c.domain)}
+                </a>
+              )}
+              {c.location && (
+                <span className="flex items-center gap-1 text-xs text-slate-500">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  {str(c.location)}
+                </span>
+              )}
+              <span className="text-xs text-slate-600">{str(c.targetSegment)}</span>
+            </div>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-slate-500 shrink-0 mt-0.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+
+        {/* Value prop always shown */}
+        <p className="text-xs text-slate-400 mt-2 leading-relaxed text-left">{str(c.valueProp)}</p>
+      </button>
+
+      {/* Expanded detail */}
+      {open && (
+        <div className="border-t border-white/5 px-4 pb-4 pt-3 space-y-4">
+          {/* Key Offerings */}
+          {c.keyOfferings?.length ? (
+            <div>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Key Offerings</p>
+              <div className="flex flex-wrap gap-1.5">
+                {c.keyOfferings.map((o, i) => (
+                  <span key={i} className="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-white/5">
+                    {str(o)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Where They Win */}
+            {c.whereTheyWin?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" /> Where They Win
+                </p>
+                <ul className="space-y-1.5">
+                  {c.whereTheyWin.map((w, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-red-400 shrink-0" />
+                      <span className="text-xs text-slate-400">{str(w)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {/* Where We Win */}
+            {c.whereClientWins?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Where We Win
+                </p>
+                <ul className="space-y-1.5">
+                  {c.whereClientWins.map((w, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="mt-1.5 h-1 w-1 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-xs text-slate-400">{str(w)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Expandable Segment Card ────────────────────────────────────────────────
 
 function ExpandableSegmentCard({ seg }: { seg: Segment }) {
@@ -709,13 +859,13 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-white">{seg.name}</p>
-            <p className="text-xs text-slate-500 capitalize">{seg.sizeCategory}</p>
+            <p className="font-semibold text-white">{str(seg.name)}</p>
+            <p className="text-xs text-slate-500 capitalize">{str(seg.sizeCategory)}</p>
           </div>
           <div className="flex items-center gap-2">
             {seg.estimatedPriority && (
-              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
-                {seg.estimatedPriority.replace("-", " ").toUpperCase()}
+              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[str(seg.estimatedPriority)] ?? TIER_COLOR["tier-3"]}`}>
+                {str(seg.estimatedPriority).replace("-", " ").toUpperCase()}
               </span>
             )}
             <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -725,7 +875,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
         {seg.positioning?.messagingHook && (
           <div className="bg-slate-800/50 rounded-lg p-3">
             <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
-            <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
+            <p className="text-sm text-slate-300">{str(seg.positioning.messagingHook)}</p>
           </div>
         )}
 
@@ -743,7 +893,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.rationale && (
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Why This Segment</p>
-              <p className="text-sm text-slate-300 leading-relaxed">{seg.rationale}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{str(seg.rationale)}</p>
             </div>
           )}
 
@@ -773,7 +923,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.positioning?.ourAngle && (
             <div>
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1.5">Our Angle</p>
-              <p className="text-sm text-slate-300 leading-relaxed">{seg.positioning.ourAngle}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{str(seg.positioning.ourAngle)}</p>
             </div>
           )}
 
@@ -808,7 +958,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.positioning?.ctaApproach && (
             <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg p-3">
               <p className="text-xs font-semibold text-violet-400 mb-1">CTA Approach</p>
-              <p className="text-sm text-slate-300">{seg.positioning.ctaApproach}</p>
+              <p className="text-sm text-slate-300">{str(seg.positioning.ctaApproach)}</p>
             </div>
           )}
         </div>

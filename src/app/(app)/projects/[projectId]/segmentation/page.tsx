@@ -82,8 +82,8 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                         />
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <Badge className={PRIORITY_COLORS[seg.estimatedPriority] ?? ""}>{seg.estimatedPriority}</Badge>
-                        <Badge className={SIZE_COLORS[seg.sizeCategory] ?? ""}>{seg.sizeCategory}</Badge>
+                        <Badge className={PRIORITY_COLORS[String(seg.estimatedPriority ?? "")] ?? ""}>{String(seg.estimatedPriority ?? "")}</Badge>
+                        <Badge className={SIZE_COLORS[String(seg.sizeCategory ?? "")] ?? ""}>{String(seg.sizeCategory ?? "")}</Badge>
                         {editMode && (
                           <button
                             onClick={() => remove(seg.id)}

@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Link2, Check, Link2Off } from "lucide-react";
 import { DashboardContent, DashboardProject } from "@/components/dashboard/DashboardContent";
 import { Button } from "@/components/ui/button";
@@ -8,15 +9,36 @@ import { toast } from "sonner";
 
 export default function DashboardPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
+  const router = useRouter();
   const [project, setProject] = useState<DashboardProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchingRef = useRef(false);
 
-  useEffect(() => {
-    fetch(`/api/projects/${projectId}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => { setProject(d.project); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchProject = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
+      const r = await fetch(`/api/projects/${projectId}`, { cache: "no-store" });
+      const d = await r.json();
+      setProject(d.project);
+    } finally {
+      fetchingRef.current = false;
+      setLoading(false);
+    }
   }, [projectId]);
+
+  // Fetch on mount — router.refresh() ensures server components also re-render fresh
+  useEffect(() => {
+    router.refresh();
+    fetchProject();
+  }, [projectId, fetchProject, router]);
+
+  // Re-fetch when the tab regains focus (user switched away to edit a step)
+  useEffect(() => {
+    const onFocus = () => fetchProject();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchProject]);
 
   if (loading) {
     return (

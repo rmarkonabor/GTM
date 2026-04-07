@@ -152,11 +152,13 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
           ? { ...prev, draftOutput: newOutput }
           : { ...prev, output: newOutput };
       });
+      // Invalidate the Next.js router cache so the dashboard reflects this change
+      router.refresh();
     } catch (err) {
       toast.error("Could not save: " + (err as Error).message);
       await refresh();
     }
-  }, [projectId, stepName, refresh]);
+  }, [projectId, stepName, refresh, router]);
 
   // Reset edit mode when AI re-runs the step
   useEffect(() => {
@@ -167,6 +169,21 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
     await refresh();
   };
 
+  const handleStop = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/stop`, {
+        method: "POST",
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error?.message ?? "Failed to stop");
+      toast.success("Step stopped.");
+      await refresh();
+      router.refresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }, [projectId, stepName, refresh, router]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -176,7 +193,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
   }
 
   if (!step || step.status === "PENDING") return <StepPending stepLabel={stepLabel} />;
-  if (step.status === "RUNNING") return <StepRunning stepLabel={stepLabel} />;
+  if (step.status === "RUNNING") return <StepRunning stepLabel={stepLabel} onStop={handleStop} />;
   if (step.status === "ERROR") {
     return (
       <ErrorDisplay
@@ -225,7 +242,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
                 <span className={usage.estimatedCostUSD > 0 ? "text-slate-400" : "text-slate-600"}>
                   {usage.estimatedCostUSD > 0 ? formatCost(usage.estimatedCostUSD) : "free"}
                 </span>
-                <span className="text-slate-700">{usage.model}</span>
+                <span className="text-slate-700">{String(usage.model ?? "")}</span>
               </div>
             )}
           </div>

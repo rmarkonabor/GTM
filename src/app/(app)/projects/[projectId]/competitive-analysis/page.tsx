@@ -35,36 +35,39 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
           const remove = (domain: string) =>
             save({ competitors: competitors.filter((c) => c.domain !== domain), isIndustrySpecific });
 
+          const s = (v: unknown): string =>
+            typeof v === "string" ? v : v == null ? "" : String(v);
+
           return (
             <div className="space-y-6">
-              {competitors.map((c) => (
-                <div key={c.domain} className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
+              {competitors.map((c, i) => (
+                <div key={i} className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
                   {/* Header */}
                   <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between">
                     <div className="flex-1">
                       <EditableText
-                        value={c.name}
+                        value={s(c.name)}
                         editMode={editMode}
                         onSave={(v) => update(c.domain, { name: v })}
                         className="font-bold text-white text-lg"
                       />
                       <div className="flex items-center gap-3 mt-1">
                         <a
-                          href={`https://${c.domain}`}
+                          href={`https://${s(c.domain)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"
                         >
-                          <ExternalLink className="h-3 w-3" />{c.domain}
+                          <ExternalLink className="h-3 w-3" />{s(c.domain)}
                         </a>
                         <span className="flex items-center gap-1 text-xs text-slate-400">
-                          <MapPin className="h-3 w-3" />{c.location}
+                          <MapPin className="h-3 w-3" />{s(c.location)}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <Badge className="bg-slate-800 text-slate-300 text-xs">{c.targetSegment}</Badge>
-                      {c.pricingModel && <Badge variant="outline" className="text-xs">{c.pricingModel}</Badge>}
+                      <Badge className="bg-slate-800 text-slate-300 text-xs">{s(c.targetSegment)}</Badge>
+                      {c.pricingModel && <Badge variant="outline" className="text-xs">{s(c.pricingModel)}</Badge>}
                       {editMode && (
                         <button
                           onClick={() => remove(c.domain)}

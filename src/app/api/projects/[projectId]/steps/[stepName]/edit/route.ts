@@ -13,6 +13,7 @@ import { runICP } from "@/lib/workflow/steps/runICP";
 import { runSegmentation } from "@/lib/workflow/steps/runSegmentation";
 import { runCompetitive } from "@/lib/workflow/steps/runCompetitive";
 import { runManifesto } from "@/lib/workflow/steps/runManifesto";
+import { runResearchEdit } from "@/lib/workflow/steps/runResearchEdit";
 import { z } from "zod";
 
 export const maxDuration = 120;
@@ -21,6 +22,7 @@ const schema = z.object({ prompt: z.string().default("") });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const STEP_FN: Record<string, (ctx: any, llm: any, db?: any) => Promise<any>> = {
+  RESEARCH: runResearchEdit,
   TARGET_MARKETS: runTargetMarkets,
   INDUSTRY_PRIORITY: runIndustryPriority,
   ICP: runICP,

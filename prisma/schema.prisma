@@ -81,8 +81,10 @@ model Project {
   businessType   String?
   status         ProjectStatus @default(RESEARCHING)
   // Unique token for public sharing — null means not shared
-  shareToken     String?       @unique
-  steps          ProjectStep[]
+  shareToken       String?       @unique
+  // JSON: { status, targetMarketName, steps, error, startedAt, completedAt }
+  coldEmailDraft   Json?
+  steps            ProjectStep[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

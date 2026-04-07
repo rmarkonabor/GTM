@@ -33,7 +33,8 @@ export async function runSegmentation(
   llm: { provider: string; apiKey: string }
 ): Promise<WorkflowStepResult<SegmentationOutput>> {
   const context = buildStepContext(ctx);
-  let prompt = buildSegmentationPrompt(context);
+  const targetMarkets = ctx.steps.TARGET_MARKETS?.markets ?? [];
+  let prompt = buildSegmentationPrompt(context, targetMarkets);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
   }
