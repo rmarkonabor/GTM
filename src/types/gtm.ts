@@ -178,7 +178,6 @@ export interface ManifestoOutput {
 
 export interface EmailAnnotation {
   part: "subject" | "opener" | "body" | "cta" | "closing";
-  text: string;
   metric: "open_rate" | "reply_rate" | "engagement" | "click_rate";
   impact: string;
 }
@@ -194,27 +193,6 @@ export interface ColdEmail {
   waitDays: number;
   angle: string;
   annotations: EmailAnnotation[];
-}
-
-export interface QualityCheck {
-  word_count_email_1: number;
-  feels_human: boolean;
-  no_buzzwords: boolean;
-  prospect_focused: boolean;
-  cta_easy_to_reply: boolean;
-  notes?: string;
-}
-
-export interface ColdEmailOutput {
-  strategy_summary: string;
-  campaign_brief: string;
-  subject_lines: SubjectLineOption[];
-  email_1: ColdEmail;
-  follow_up_1: ColdEmail;
-  follow_up_2: ColdEmail;
-  break_up_email: ColdEmail;
-  quality_check: QualityCheck;
-  missing_inputs: string[];
 }
 
 // ─── Step orchestration ──────────────────────────────────────────────────────
