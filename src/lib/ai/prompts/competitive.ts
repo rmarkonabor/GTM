@@ -33,12 +33,14 @@ Return JSON:
 }
 
 Rules:
-- Include 5-15 competitors total, covering each target market
-- At least 2 competitors per target market where competition exists
+- Include 4-8 competitors total — quality over quantity. Focus on the most significant ones.
+- 1-2 competitors per target market is sufficient. Do not pad.
 - targetSegment must EXACTLY match one of the target market names listed above
 - domain must be the actual website domain (e.g. "hubspot.com")
-- location must be real HQ city and country
-- whereTheyWin and whereClientWins must reference the specific problems and trends from that target market
-- whereClientWins must be specific to THIS client's strengths, not generic
+- location: city and country only (e.g. "San Francisco, US")
+- keyOfferings: max 3 items, keep each under 6 words
+- whereTheyWin: max 3 items, keep each under 10 words
+- whereClientWins: max 3 items, keep each under 10 words — must be specific to THIS client's strengths
+- valueProp: 1 sentence max, under 20 words
 - Return ONLY JSON, no markdown.`;
 }

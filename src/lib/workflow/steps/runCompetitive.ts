@@ -42,7 +42,12 @@ export async function runCompetitive(
     })), null, 2));
   }
   const context = contextParts.join("\n");
-  const targetMarkets = ctx.steps.TARGET_MARKETS?.markets ?? [];
+  // Pass only market names + top urgent problem — keeps context small and fast
+  const rawMarkets = (ctx.steps.TARGET_MARKETS as { markets?: { name: string; urgentProblems?: string[] }[] } | undefined)?.markets ?? [];
+  const targetMarkets = rawMarkets.map((m) => ({
+    name: m.name,
+    topProblem: m.urgentProblems?.[0] ?? "",
+  }));
   let prompt = buildCompetitivePrompt(context, ctx.businessType, targetMarkets);
   if (ctx.editPrompt) {
     prompt += `\n\nREFINEMENT REQUEST FROM USER: ${ctx.editPrompt}\nPlease adjust your output based on this feedback while keeping the same JSON structure.`;
@@ -50,7 +55,7 @@ export async function runCompetitive(
   const modelId = getModelForTask(llm.provider as "openai" | "anthropic" | "google", "competitive-analysis");
   const model = getLanguageModel(llm.provider as "openai" | "anthropic" | "google", llm.apiKey, "competitive-analysis");
 
-  const { object, usage } = await generateObject({ model, schema, prompt });
+  const { object, usage } = await generateObject({ model, schema, prompt, maxOutputTokens: 2000 });
   return {
     output: object as CompetitiveAnalysisOutput,
     usage: {
