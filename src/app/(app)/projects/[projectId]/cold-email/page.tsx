@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square, Info, CheckCircle2 } from "lucide-react";
+import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -13,47 +13,39 @@ import { checkSpam } from "@/lib/email/spam-words";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type DraftProgress = "strategy" | "email_1" | "follow_up_1" | "follow_up_2" | "break_up_email";
-
-const PROGRESS_LABEL: Record<DraftProgress, string> = {
-  strategy:       "Writing strategy...",
-  email_1:        "Writing Email 1...",
-  follow_up_1:    "Writing Follow-up 1...",
-  follow_up_2:    "Writing Follow-up 2...",
-  break_up_email: "Writing break-up email...",
-};
-
-type AwaitingStep = "strategy" | "email_1" | "follow_up_1" | "follow_up_2";
-
-const APPROVE_LABEL: Record<AwaitingStep, string> = {
-  strategy:    "Approve strategy & write Email 1",
-  email_1:     "Approve Email 1 & write Follow-up 1",
-  follow_up_1: "Approve Follow-up 1 & write Follow-up 2",
-  follow_up_2: "Approve Follow-up 2 & write break-up email",
-};
+type DraftStatus = "RUNNING" | "COMPLETE" | "ERROR" | "CANCELLED";
 
 interface ColdEmailDraft {
-  status: "PENDING" | "RUNNING" | "AWAITING_APPROVAL" | "COMPLETE" | "ERROR" | "CANCELLED";
+  status: DraftStatus;
   targetMarketName: string;
-  progress?: DraftProgress;
-  awaitingApprovalFor?: AwaitingStep;
   error?: string;
   startedAt: string;
   completedAt?: string;
   strategy_summary?: string;
   campaign_brief?: string;
   subject_lines?: SubjectLineOption[];
+  missing_inputs?: string[];
   email_1?: ColdEmail;
   follow_up_1?: ColdEmail;
   follow_up_2?: ColdEmail;
   break_up_email?: ColdEmail;
-
-  missing_inputs?: string[];
 }
 
-interface TargetMarket { name: string }
+interface TargetMarket {
+  name: string;
+}
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const EMAIL_KEYS = ["email_1", "follow_up_1", "follow_up_2", "break_up_email"] as const;
+type EmailKey = (typeof EMAIL_KEYS)[number];
+
+const EMAIL_LABELS: Record<EmailKey, { label: string; sublabel: string }> = {
+  email_1: { label: "Email 1", sublabel: "Cold First Touch" },
+  follow_up_1: { label: "Follow-up 1", sublabel: "New Angle" },
+  follow_up_2: { label: "Follow-up 2", sublabel: "Second Angle" },
+  break_up_email: { label: "Break-up", sublabel: "Close the Loop" },
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const METRIC_LABEL: Record<EmailAnnotation["metric"], string> = {
   open_rate: "Open Rate",
@@ -69,13 +61,6 @@ const METRIC_COLOR: Record<EmailAnnotation["metric"], string> = {
   click_rate: "bg-violet-500/10 text-violet-400 border-violet-500/20",
 };
 
-const EMAIL_LABELS: Record<string, { label: string; sublabel: string }> = {
-  email_1:      { label: "Email 1",      sublabel: "Cold First Touch" },
-  follow_up_1:  { label: "Follow-up 1",  sublabel: "New Angle" },
-  follow_up_2:  { label: "Follow-up 2",  sublabel: "Second Angle" },
-  break_up_email: { label: "Break-up",   sublabel: "Close the Loop" },
-};
-
 function countSpintax(text: string): number {
   return (text.match(/\{[^}]+\|[^}]+\}/g) ?? []).length;
 }
@@ -85,7 +70,13 @@ function SpintaxBadge({ text }: { text: string }) {
   if (count === 0) return null;
   const ok = count >= 8 && count <= 12;
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${ok ? "bg-violet-500/10 text-violet-400 border-violet-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"}`}>
+    <span
+      className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+        ok
+          ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
+          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+      }`}
+    >
       {count} spintax {ok ? "✓" : "(target 8–12)"}
     </span>
   );
@@ -105,18 +96,19 @@ function SpamWarning({ text }: { text: string }) {
 // ─── Email Editor ─────────────────────────────────────────────────────────────
 
 function EmailEditor({
-  emailKey, email, onChange,
+  emailKey,
+  email,
+  onChange,
 }: {
-  emailKey: string;
+  emailKey: EmailKey;
   email: ColdEmail;
   onChange: (updated: ColdEmail) => void;
 }) {
-  const { label, sublabel } = EMAIL_LABELS[emailKey] ?? { label: emailKey, sublabel: "" };
+  const { label, sublabel } = EMAIL_LABELS[emailKey];
   const combined = email.subject + " " + email.body;
 
   return (
     <div className="bg-slate-900 border border-white/10 rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="flex items-start justify-between px-4 py-3 border-b border-white/5 bg-slate-800/40 gap-3">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -127,9 +119,7 @@ function EmailEditor({
             <span className="text-xs text-slate-500">Day {email.waitDays}</span>
             <SpintaxBadge text={combined} />
           </div>
-          {email.angle && (
-            <p className="text-[11px] text-slate-500 italic">Angle: {email.angle}</p>
-          )}
+          {email.angle && <p className="text-[11px] text-slate-500 italic">Angle: {email.angle}</p>}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-end shrink-0">
           {email.annotations.map((a, i) => (
@@ -145,32 +135,41 @@ function EmailEditor({
         </div>
       </div>
 
-      {/* Body */}
       <div className="p-4 space-y-3">
         <div>
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Subject line</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Subject line
+          </label>
           <Input
             value={email.subject}
             onChange={(e) => onChange({ ...email, subject: e.target.value })}
             className="bg-slate-800 border-white/10 text-white text-sm font-medium"
           />
-          {email.annotations.filter((a) => a.part === "subject").map((a, i) => (
-            <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">{a.impact}</p>
-          ))}
+          {email.annotations
+            .filter((a) => a.part === "subject")
+            .map((a, i) => (
+              <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">
+                {a.impact}
+              </p>
+            ))}
         </div>
         <div>
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">Body</label>
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+            Body
+          </label>
           <Textarea
             value={email.body}
             onChange={(e) => onChange({ ...email, body: e.target.value })}
             rows={emailKey === "break_up_email" ? 4 : 7}
             className="bg-slate-800 border-white/10 text-white text-sm resize-y font-mono leading-relaxed"
           />
-          {email.annotations.filter((a) => a.part !== "subject").map((a, i) => (
-            <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">
-              <span className="text-slate-600 font-semibold uppercase">{a.part}</span> — {a.impact}
-            </p>
-          ))}
+          {email.annotations
+            .filter((a) => a.part !== "subject")
+            .map((a, i) => (
+              <p key={i} className="mt-1 text-[10px] text-slate-500 leading-relaxed">
+                <span className="text-slate-600 font-semibold uppercase">{a.part}</span> — {a.impact}
+              </p>
+            ))}
         </div>
         <SpamWarning text={combined} />
       </div>
@@ -181,7 +180,9 @@ function EmailEditor({
 // ─── Subject Line Selector ────────────────────────────────────────────────────
 
 function SubjectLineSelector({
-  options, selectedIdx, onSelect,
+  options,
+  selectedIdx,
+  onSelect,
 }: {
   options: SubjectLineOption[];
   selectedIdx: number;
@@ -227,7 +228,9 @@ function MissingInputs({ items }: { items: string[] }) {
         <p className="text-xs font-semibold text-slate-400 mb-1.5">Would improve with:</p>
         <ul className="space-y-1">
           {items.map((item, i) => (
-            <li key={i} className="text-xs text-slate-500">· {item}</li>
+            <li key={i} className="text-xs text-slate-500">
+              · {item}
+            </li>
           ))}
         </ul>
       </div>
@@ -237,9 +240,6 @@ function MissingInputs({ items }: { items: string[] }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const EMAIL_KEYS = ["email_1", "follow_up_1", "follow_up_2", "break_up_email"] as const;
-type EmailKey = typeof EMAIL_KEYS[number];
-
 export default function ColdEmailPage() {
   const { projectId } = useParams<{ projectId: string }>();
 
@@ -248,7 +248,7 @@ export default function ColdEmailPage() {
   const [selectedMarket, setSelectedMarket] = useState("");
   const [draft, setDraft] = useState<ColdEmailDraft | null>(null);
 
-  // Editable email content
+  // Editable email content (local edits, not synced back to draft on every keystroke)
   const [emails, setEmails] = useState<Partial<Record<EmailKey, ColdEmail>>>({});
   const [selectedSubjectIdx, setSelectedSubjectIdx] = useState(0);
 
@@ -258,9 +258,19 @@ export default function ColdEmailPage() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const isRunning = draft?.status === "RUNNING";
   const isComplete = draft?.status === "COMPLETE" && draft.email_1;
 
-  // Load project data + existing draft
+  function initEmailsFromDraft(d: ColdEmailDraft) {
+    const next: Partial<Record<EmailKey, ColdEmail>> = {};
+    for (const key of EMAIL_KEYS) {
+      const val = d[key];
+      if (val) next[key] = val;
+    }
+    setEmails(next);
+  }
+
+  // Load project data + existing draft on mount
   useEffect(() => {
     fetch(`/api/projects/${projectId}`)
       .then((r) => r.json())
@@ -281,41 +291,29 @@ export default function ColdEmailPage() {
       .then((data) => {
         if (!data.draft) return;
         const d = data.draft as ColdEmailDraft;
+        // Only restore drafts with a recognized status — ignore legacy drafts
+        if (!["RUNNING", "COMPLETE", "ERROR", "CANCELLED"].includes(d.status)) return;
         setDraft(d);
-        // Restore the market + any partial emails regardless of status — the
-        // user may be returning mid-approval, so they need to see what's already
-        // generated in order to approve the next step.
         if (d.targetMarketName) setSelectedMarket(d.targetMarketName);
-        initEmailsFromDraft(d);
+        if (d.status === "COMPLETE") initEmailsFromDraft(d);
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  function initEmailsFromDraft(d: ColdEmailDraft) {
-    const next: Partial<Record<EmailKey, ColdEmail>> = {};
-    for (const key of EMAIL_KEYS) {
-      const val = d[key as keyof ColdEmailDraft] as ColdEmail | undefined;
-      if (val) next[key] = val;
-    }
-    setEmails(next);
-    // Campaign name is set by the auto-update effect once companyName resolves
-  }
-
-  // Auto-update campaign name whenever we have all the pieces.
-  // Deliberately no !isComplete guard — companyName arrives async (separate fetch)
-  // so we need this to fire even after draft is already loaded.
+  // Auto-update campaign name once we have company + market
   useEffect(() => {
     if (companyName && selectedMarket) {
       setCampaignName(`${companyName} — ${selectedMarket} Sequence`);
     }
   }, [companyName, selectedMarket]);
 
-  // Polling — active while PENDING, RUNNING, or transitioning out of AWAITING_APPROVAL
+  // Polling while RUNNING
   useEffect(() => {
-    const shouldPoll = draft?.status === "PENDING" || draft?.status === "RUNNING";
-    if (!shouldPoll) {
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (draft?.status !== "RUNNING") {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
       return;
     }
     if (pollRef.current) return;
@@ -327,32 +325,44 @@ export default function ColdEmailPage() {
         if (!data.draft) return;
         const d = data.draft as ColdEmailDraft;
         setDraft(d);
-        // Sync partial emails on every tick so each email appears as its step completes
-        initEmailsFromDraft(d);
         if (d.status === "COMPLETE" && d.email_1) {
+          initEmailsFromDraft(d);
           toast.success("Email sequence ready!");
-          clearInterval(pollRef.current!); pollRef.current = null;
-        } else if (d.status === "AWAITING_APPROVAL") {
-          // Step completed — stop polling until user approves
-          clearInterval(pollRef.current!); pollRef.current = null;
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
         } else if (d.status === "ERROR") {
           toast.error(d.error ?? "Generation failed. Please try again.");
-          clearInterval(pollRef.current!); pollRef.current = null;
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
         } else if (d.status === "CANCELLED") {
-          clearInterval(pollRef.current!); pollRef.current = null;
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
         }
-      } catch { /* keep polling */ }
+      } catch {
+        /* keep polling */
+      }
     }, 3000);
 
-    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
   }, [draft?.status, projectId]);
 
   const handleGenerate = useCallback(async () => {
-    if (!selectedMarket) { toast.warning("Select a target market first."); return; }
+    if (!selectedMarket) {
+      toast.warning("Select a target market first.");
+      return;
+    }
     setEmails({});
     setSelectedSubjectIdx(0);
-    setDraft({ status: "PENDING", targetMarketName: selectedMarket, startedAt: new Date().toISOString() });
+    setDraft({
+      status: "RUNNING",
+      targetMarketName: selectedMarket,
+      startedAt: new Date().toISOString(),
+    });
     try {
       const res = await fetch(`/api/projects/${projectId}/cold-email`, {
         method: "POST",
@@ -360,8 +370,11 @@ export default function ColdEmailPage() {
         body: JSON.stringify({ targetMarketName: selectedMarket }),
       });
       const data = await res.json();
-      if (!res.ok) { setDraft(null); throw new Error(data.error?.message ?? "Failed to start generation"); }
-      toast("Generating in the background — feel free to navigate away.");
+      if (!res.ok) {
+        setDraft(null);
+        throw new Error(data.error?.message ?? "Failed to start generation");
+      }
+      toast("Generating sequence — this usually takes 30-60 seconds.");
     } catch (err) {
       toast.error((err as Error).message);
       setDraft(null);
@@ -369,38 +382,26 @@ export default function ColdEmailPage() {
   }, [selectedMarket, projectId]);
 
   const handleStop = useCallback(async () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    setDraft((prev) => prev ? { ...prev, status: "CANCELLED" } : null);
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setDraft((prev) => (prev ? { ...prev, status: "CANCELLED" } : null));
     try {
       await fetch(`/api/projects/${projectId}/cold-email`, { method: "DELETE" });
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
     toast("Generation stopped.");
   }, [projectId]);
 
-  const [approving, setApproving] = useState(false);
-
-  const handleApprove = useCallback(async () => {
-    setApproving(true);
-    // Optimistically switch to RUNNING so polling starts
-    setDraft((prev) => prev ? { ...prev, status: "RUNNING", awaitingApprovalFor: undefined } : null);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/cold-email`, { method: "PATCH" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error?.message ?? "Failed to approve step");
-      }
-    } catch (err) {
-      toast.error((err as Error).message);
-      // Revert optimistic update on failure
-      setDraft((prev) => prev ? { ...prev, status: "AWAITING_APPROVAL" } : null);
-    } finally {
-      setApproving(false);
-    }
-  }, [projectId]);
-
   const handlePush = useCallback(async () => {
-    if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
-    const subjectForEmail1 = draft?.subject_lines?.[selectedSubjectIdx]?.text ?? emails.email_1?.subject ?? "";
+    if (!campaignName.trim()) {
+      toast.warning("Enter a campaign name.");
+      return;
+    }
+    const subjectForEmail1 =
+      draft?.subject_lines?.[selectedSubjectIdx]?.text ?? emails.email_1?.subject ?? "";
     const steps = EMAIL_KEYS
       .map((key) => emails[key])
       .filter((e): e is ColdEmail => !!e)
@@ -410,7 +411,10 @@ export default function ColdEmailPage() {
         waitDays: e.waitDays,
       }));
 
-    if (!steps.length) { toast.warning("No emails to push."); return; }
+    if (!steps.length) {
+      toast.warning("No emails to push.");
+      return;
+    }
     setPushing(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/cold-email/push`, {
@@ -431,10 +435,6 @@ export default function ColdEmailPage() {
       setPushing(false);
     }
   }, [campaignName, emails, selectedSubjectIdx, draft, selectedMarket, projectId]);
-
-  const generating = draft?.status === "PENDING" || draft?.status === "RUNNING";
-  const isAwaiting = draft?.status === "AWAITING_APPROVAL";
-  const isActive = generating || isAwaiting; // sequence in progress (block regenerate)
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -461,13 +461,17 @@ export default function ColdEmailPage() {
                 Complete the Target Markets step first.
               </p>
             ) : (
-              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={isActive}>
+              <Select value={selectedMarket} onValueChange={setSelectedMarket} disabled={isRunning}>
                 <SelectTrigger className="bg-slate-800 border-white/15 text-white">
                   <SelectValue placeholder="Select a market…" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-white/15">
                   {markets.map((m) => (
-                    <SelectItem key={m.name} value={m.name} className="text-white focus:bg-violet-600/20 focus:text-violet-300">
+                    <SelectItem
+                      key={m.name}
+                      value={m.name}
+                      className="text-white focus:bg-violet-600/20 focus:text-violet-300"
+                    >
                       {m.name}
                     </SelectItem>
                   ))}
@@ -477,20 +481,20 @@ export default function ColdEmailPage() {
           </div>
           <Button
             onClick={handleGenerate}
-            disabled={isActive || !selectedMarket || markets.length === 0}
+            disabled={isRunning || !selectedMarket || markets.length === 0}
             className="bg-violet-600 hover:bg-violet-700 text-white gap-2 shrink-0"
           >
-            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {generating ? "Generating…" : isComplete ? "Regenerate" : "Generate Sequence"}
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {isRunning ? "Generating…" : isComplete ? "Regenerate" : "Generate Sequence"}
           </Button>
         </div>
 
         {/* Generating banner */}
-        {generating && (
+        {isRunning && (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
             <div className="flex items-center gap-2 text-xs text-violet-400">
               <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-              {draft?.progress ? PROGRESS_LABEL[draft.progress] : "Starting generation..."}
+              Writing the full sequence…
               <span className="text-violet-500/60">You can navigate away safely.</span>
             </div>
             <button
@@ -504,33 +508,7 @@ export default function ColdEmailPage() {
           </div>
         )}
 
-        {/* Approval banner */}
-        {isAwaiting && draft.awaitingApprovalFor && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
-            <div className="flex items-center gap-2 text-xs text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-              Review the output below, then approve to continue.
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleStop}
-                className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-              >
-                Stop
-              </button>
-              <Button
-                size="sm"
-                onClick={handleApprove}
-                disabled={approving}
-                className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs gap-1.5 h-7 px-3"
-              >
-                {approving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                {APPROVE_LABEL[draft.awaitingApprovalFor]}
-              </Button>
-            </div>
-          </div>
-        )}
-
+        {/* Error banner */}
         {draft?.status === "ERROR" && (
           <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-xs text-red-400">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
@@ -539,8 +517,8 @@ export default function ColdEmailPage() {
         )}
       </div>
 
-      {/* Results — show as they arrive (even while still generating) */}
-      {(draft?.strategy_summary || draft?.email_1) && (
+      {/* Results */}
+      {isComplete && (
         <>
           {/* Strategy summary */}
           {(draft.strategy_summary || draft.campaign_brief) && (
@@ -564,7 +542,7 @@ export default function ColdEmailPage() {
             />
           )}
 
-          {/* Email editors — appear one by one as each step completes */}
+          {/* Email editors */}
           <div className="space-y-4">
             {EMAIL_KEYS.map((key) => {
               const email = emails[key];
@@ -583,35 +561,33 @@ export default function ColdEmailPage() {
           {/* Missing inputs */}
           {draft.missing_inputs && <MissingInputs items={draft.missing_inputs} />}
 
-          {/* Push to Smartlead — only when all 4 emails are ready */}
-          {isComplete && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Send className="h-4 w-4 text-emerald-400" />
-                <h3 className="font-semibold text-white text-sm">Push to Smartlead</h3>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1.5">Campaign Name</label>
-                <Input
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  className="bg-slate-800 border-white/10 text-white text-sm"
-                  placeholder="My Campaign"
-                />
-              </div>
-              <Button
-                onClick={handlePush}
-                disabled={pushing || !campaignName.trim()}
-                className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
-              >
-                {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {pushing ? "Creating campaign…" : "Create Campaign on Smartlead"}
-              </Button>
-              <p className="text-xs text-slate-600">
-                Creates the campaign with 4 sequence steps using the selected subject line for Email 1. No leads added.
-              </p>
+          {/* Push to Smartlead */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-emerald-400" />
+              <h3 className="font-semibold text-white text-sm">Push to Smartlead</h3>
             </div>
-          )}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1.5">Campaign Name</label>
+              <Input
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                className="bg-slate-800 border-white/10 text-white text-sm"
+                placeholder="My Campaign"
+              />
+            </div>
+            <Button
+              onClick={handlePush}
+              disabled={pushing || !campaignName.trim()}
+              className="w-full bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
+            >
+              {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {pushing ? "Creating campaign…" : "Create Campaign on Smartlead"}
+            </Button>
+            <p className="text-xs text-slate-600">
+              Creates the campaign with 4 sequence steps using the selected subject line for Email 1. No leads added.
+            </p>
+          </div>
         </>
       )}
     </div>

@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { errorResponse } from "@/lib/errors/handlers";
 import { inngest } from "@/../inngest/client";
-import { NEXT_STEP, type ColdEmailStep } from "@/../inngest/cold-email";
 
-/** POST — start strategy generation */
+/**
+ * POST — start generating the full 4-step sequence in one shot.
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
@@ -22,138 +23,52 @@ export async function POST(
     const targetMarketName: string = body.targetMarketName ?? "";
 
     if (!targetMarketName.trim()) {
-      return NextResponse.json({ error: { code: "BAD_REQUEST", message: "targetMarketName is required." } }, { status: 400 });
+      return NextResponse.json(
+        { error: { code: "BAD_REQUEST", message: "targetMarketName is required." } },
+        { status: 400 }
+      );
     }
 
-    const project = await prisma.project.findFirst({ where: { id: projectId, userId: session.user.id } });
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: session.user.id },
+    });
     if (!project) {
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
 
-    // Reset draft to PENDING — wipes any stale email data from previous runs
+    // Reset draft to RUNNING — wipe any stale data from previous attempts
     await prisma.project.update({
       where: { id: projectId },
       data: {
         coldEmailDraft: {
-          status: "PENDING",
+          status: "RUNNING",
           targetMarketName,
           startedAt: new Date().toISOString(),
         },
       },
     });
 
-    // Trigger the strategy step
-    await inngest.send({
-      name: "gtm/cold-email.run-step",
-      data: { projectId, targetMarketName, step: "strategy" satisfies ColdEmailStep },
-    });
-
-    return NextResponse.json({ status: "PENDING" });
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
-
-/** PATCH — approve current step and trigger the next one */
-export async function PATCH(
-  _req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Please sign in." } }, { status: 401 });
-    }
-    const { projectId } = await params;
-
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId: session.user.id },
-      select: { id: true, coldEmailDraft: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
-    }
-
-    const existing = (project.coldEmailDraft ?? {}) as Record<string, unknown>;
-    const awaitingFor = existing.awaitingApprovalFor as ColdEmailStep | undefined;
-
-    if (!awaitingFor) {
-      return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Nothing awaiting approval." } }, { status: 400 });
-    }
-
-    const nextStep = NEXT_STEP[awaitingFor];
-    if (!nextStep) {
-      // Should not happen — break_up_email goes straight to COMPLETE
-      return NextResponse.json({ error: { code: "BAD_REQUEST", message: "No next step." } }, { status: 400 });
-    }
-
-    const targetMarketName = (existing.targetMarketName as string | undefined) ?? "";
-
-    // Immediately flip to RUNNING in DB so polling doesn't show the approval
-    // banner again before the Inngest function picks up the event.
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        coldEmailDraft: {
-          ...existing,
-          status: "RUNNING",
-          awaitingApprovalFor: null,
-        },
+    // Cancel any in-flight generation for this project, then fire a fresh one
+    await inngest.send([
+      {
+        name: "gtm/cold-email.cancel",
+        data: { projectId },
       },
-    });
-
-    // Trigger the next step as a fresh Inngest invocation — no waitForEvent,
-    // no replay complexity.
-    await inngest.send({
-      name: "gtm/cold-email.run-step",
-      data: { projectId, targetMarketName, step: nextStep },
-    });
-
-    return NextResponse.json({ status: "running", nextStep });
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
-
-/** DELETE — cancel an in-progress generation */
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Please sign in." } }, { status: 401 });
-    }
-    const { projectId } = await params;
-
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId: session.user.id },
-      select: { id: true, coldEmailDraft: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
-    }
-
-    const existing = project.coldEmailDraft as Record<string, unknown> | null;
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        coldEmailDraft: {
-          ...(existing ?? {}),
-          status: "CANCELLED",
-          error: "Stopped by user.",
-        },
+      {
+        name: "gtm/cold-email.generate",
+        data: { projectId, targetMarketName },
       },
-    });
+    ]);
 
-    return NextResponse.json({ status: "CANCELLED" });
+    return NextResponse.json({ status: "RUNNING" });
   } catch (err) {
     return errorResponse(err);
   }
 }
 
-/** GET — poll current draft status */
+/**
+ * GET — poll the current draft state.
+ */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
@@ -174,6 +89,50 @@ export async function GET(
     }
 
     return NextResponse.json({ draft: project.coldEmailDraft ?? null });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
+/**
+ * DELETE — cancel an in-progress generation.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Please sign in." } }, { status: 401 });
+    }
+    const { projectId } = await params;
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: session.user.id },
+      select: { id: true, coldEmailDraft: true },
+    });
+    if (!project) {
+      return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
+    }
+
+    // Signal the running Inngest function to cancel
+    await inngest.send({ name: "gtm/cold-email.cancel", data: { projectId } });
+
+    // Mark draft as cancelled
+    const existing = (project.coldEmailDraft ?? {}) as Record<string, unknown>;
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        coldEmailDraft: {
+          ...existing,
+          status: "CANCELLED",
+          error: "Stopped by user.",
+        },
+      },
+    });
+
+    return NextResponse.json({ status: "CANCELLED" });
   } catch (err) {
     return errorResponse(err);
   }
