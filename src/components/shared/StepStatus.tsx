@@ -1,8 +1,27 @@
+"use client";
+
+import { useState } from "react";
+import { Square, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 interface Props {
   stepLabel: string;
+  onStop?: () => Promise<void>;
 }
 
-export function StepRunning({ stepLabel }: Props) {
+export function StepRunning({ stepLabel, onStop }: Props) {
+  const [stopping, setStopping] = useState(false);
+
+  const handleStop = async () => {
+    if (!onStop) return;
+    setStopping(true);
+    try {
+      await onStop();
+    } finally {
+      setStopping(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center relative overflow-hidden">
       {/* Animated background rings */}
@@ -24,23 +43,12 @@ export function StepRunning({ stepLabel }: Props) {
       {/* Central pulsing icon */}
       <div className="relative mb-6">
         <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/30 flex items-center justify-center shadow-lg shadow-violet-500/10">
-          {/* Pulsing dots */}
           <div className="flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 rounded-full bg-violet-400 animate-bounce"
-              style={{ animationDelay: "0ms" }}
-            />
-            <span
-              className="h-2 w-2 rounded-full bg-violet-400 animate-bounce"
-              style={{ animationDelay: "150ms" }}
-            />
-            <span
-              className="h-2 w-2 rounded-full bg-violet-400 animate-bounce"
-              style={{ animationDelay: "300ms" }}
-            />
+            <span className="h-2 w-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="h-2 w-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="h-2 w-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
         </div>
-        {/* Glow effect */}
         <div className="absolute inset-0 rounded-2xl bg-violet-500/20 blur-xl -z-10" />
       </div>
 
@@ -57,14 +65,30 @@ export function StepRunning({ stepLabel }: Props) {
       <div className="mt-6 w-48 h-1 rounded-full bg-slate-800 overflow-hidden relative">
         <div className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-violet-500 to-transparent animate-shimmer" />
       </div>
+
+      {/* Stop button */}
+      {onStop && (
+        <Button
+          variant="outline"
+          onClick={handleStop}
+          disabled={stopping}
+          className="mt-6 border-red-500/30 text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 gap-2 relative"
+        >
+          {stopping ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Square className="h-3.5 w-3.5 fill-current" />
+          )}
+          {stopping ? "Stopping…" : "Stop"}
+        </Button>
+      )}
     </div>
   );
 }
 
-export function StepPending({ stepLabel }: Props) {
+export function StepPending({ stepLabel }: { stepLabel: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      {/* Lock / waiting icon */}
       <div className="relative mb-6">
         <div className="h-16 w-16 rounded-2xl bg-slate-800/80 border border-white/10 flex items-center justify-center shadow-lg">
           <svg
@@ -73,30 +97,11 @@ export function StepPending({ stepLabel }: Props) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Lock body */}
-            <rect
-              x="5"
-              y="11"
-              width="14"
-              height="10"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeDasharray="3 2"
-            />
-            {/* Lock shackle */}
-            <path
-              d="M8 11V7a4 4 0 0 1 8 0v4"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeDasharray="3 2"
-            />
-            {/* Keyhole */}
+            <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
             <circle cx="12" cy="16" r="1.5" fill="currentColor" opacity="0.5" />
           </svg>
         </div>
-        {/* Very subtle glow */}
         <div className="absolute inset-0 rounded-2xl bg-slate-700/20 blur-lg -z-10" />
       </div>
 
@@ -109,7 +114,6 @@ export function StepPending({ stepLabel }: Props) {
         previous step is reviewed and approved.
       </p>
 
-      {/* Subtle progress indicator */}
       <div className="mt-6 flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-violet-500/60" />
         <span className="h-1.5 w-1.5 rounded-full bg-violet-500/40" />

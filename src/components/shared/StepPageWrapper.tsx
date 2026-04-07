@@ -175,8 +175,23 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
     );
   }
 
+  const handleStop = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/steps/${stepName}/stop`, {
+        method: "POST",
+      });
+      const data = await safeJson(res);
+      if (!res.ok) throw new Error(data.error?.message ?? "Failed to stop");
+      toast.success("Step stopped.");
+      await refresh();
+      router.refresh();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }, [projectId, stepName, refresh, router]);
+
   if (!step || step.status === "PENDING") return <StepPending stepLabel={stepLabel} />;
-  if (step.status === "RUNNING") return <StepRunning stepLabel={stepLabel} />;
+  if (step.status === "RUNNING") return <StepRunning stepLabel={stepLabel} onStop={handleStop} />;
   if (step.status === "ERROR") {
     return (
       <ErrorDisplay
