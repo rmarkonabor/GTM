@@ -153,14 +153,14 @@ export function DashboardContent({ project, readOnly, heroExtra }: DashboardCont
             {project.websiteUrl}
           </div>
           {manifesto?.tagline ? (
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{manifesto.tagline}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{str(manifesto.tagline)}</h1>
           ) : (
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{profile?.name ?? "Your Strategy"}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{str(profile?.name ?? "Your Strategy")}</h1>
           )}
           {manifesto?.elevatorPitch ? (
-            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{manifesto.elevatorPitch}</p>
+            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{str(manifesto.elevatorPitch)}</p>
           ) : profile?.description ? (
-            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{profile.description}</p>
+            <p className="text-white/80 text-lg leading-relaxed max-w-3xl">{str(profile.description)}</p>
           ) : null}
 
           <div className="mt-6 flex items-center gap-3 flex-wrap">
@@ -241,11 +241,11 @@ function StrategyTab({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardLabel>Who We Serve</CardLabel>
-            <p className="text-slate-300 text-sm leading-relaxed">{manifesto.who}</p>
+            <p className="text-slate-300 text-sm leading-relaxed">{str(manifesto.who)}</p>
           </Card>
           <Card>
             <CardLabel>Why Choose Us</CardLabel>
-            <p className="text-slate-300 text-sm leading-relaxed">{manifesto.whyChooseThem}</p>
+            <p className="text-slate-300 text-sm leading-relaxed">{str(manifesto.whyChooseThem)}</p>
           </Card>
         </div>
       )}
@@ -255,10 +255,10 @@ function StrategyTab({
         <section>
           <SectionHeader icon={MessageSquare} title="Messaging Pillars" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {manifesto.messagingPillars.map((p) => (
-              <Card key={p.pillar}>
-                <span className="inline-block bg-violet-500/10 text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">{p.pillar}</span>
-                <p className="font-semibold text-white text-sm">{p.headline}</p>
+            {manifesto.messagingPillars.map((p, i) => (
+              <Card key={i}>
+                <span className="inline-block bg-violet-500/10 text-violet-400 text-xs font-semibold px-2.5 py-1 rounded-full mb-3">{str(p.pillar)}</span>
+                <p className="font-semibold text-white text-sm">{str(p.headline)}</p>
               </Card>
             ))}
           </div>
@@ -271,15 +271,15 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Building2} title="Priority Industries" />
           <div className="space-y-3">
-            {industries?.sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 5).map((ind) => (
-              <Card key={ind.standardIndustry}>
+            {industries?.sort((a, b) => a.priorityRank - b.priorityRank).slice(0, 5).map((ind, i) => (
+              <Card key={i}>
                 <div className="flex items-start justify-between mb-1">
-                  <p className="font-semibold text-white text-sm">{ind.niche}</p>
-                  <span className={`text-xs font-medium ${FIT_COLOR[ind.estimatedMarketFit] ?? "text-slate-400"}`}>
-                    {ind.estimatedMarketFit}
+                  <p className="font-semibold text-white text-sm">{str(ind.niche)}</p>
+                  <span className={`text-xs font-medium ${FIT_COLOR[str(ind.estimatedMarketFit)] ?? "text-slate-400"}`}>
+                    {str(ind.estimatedMarketFit)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mb-2">{ind.standardIndustry}</p>
+                <p className="text-xs text-slate-500 mb-2">{str(ind.standardIndustry)}</p>
                 <div className="flex flex-wrap gap-1">
                   {ind.painPoints.slice(0, 2).map((pp, i) => (
                     <span key={i} className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">{str(pp)}</span>
@@ -294,11 +294,11 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Target} title="Target Markets" />
           <div className="space-y-3">
-            {markets?.sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 5).map((mkt) => (
-              <Card key={mkt.name}>
+            {markets?.sort((a, b) => (b.priorityScore as number) - (a.priorityScore as number)).slice(0, 5).map((mkt, i) => (
+              <Card key={i}>
                 <div className="flex items-start justify-between mb-1">
-                  <p className="font-semibold text-white text-sm">{mkt.name}</p>
-                  <span className="text-xs font-bold text-violet-400">{mkt.priorityScore}/10</span>
+                  <p className="font-semibold text-white text-sm">{str(mkt.name)}</p>
+                  <span className="text-xs font-bold text-violet-400">{String(mkt.priorityScore ?? "")}/10</span>
                 </div>
                 <div className="space-y-1 mt-2">
                   {mkt.urgentProblems.slice(0, 2).map((p, i) => (
@@ -317,20 +317,20 @@ function StrategyTab({
         <section>
           <SectionHeader icon={Users} title="Ideal Customers" />
           <div className="space-y-3">
-            {icps?.slice(0, 5).map((icp) => (
-              <Card key={icp.niche}>
-                <p className="font-semibold text-white text-sm mb-1">{icp.niche}</p>
-                <p className="text-xs text-slate-500 mb-2">{icp.firmographics.geographies?.slice(0, 2).join(", ")}</p>
-                {icp.keywords?.length > 0 && (
+            {icps?.slice(0, 5).map((icp, i) => (
+              <Card key={i}>
+                <p className="font-semibold text-white text-sm mb-1">{str(icp.niche)}</p>
+                <p className="text-xs text-slate-500 mb-2">{icp.firmographics?.geographies?.slice(0, 2).map(str).join(", ")}</p>
+                {(icp.keywords?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {icp.keywords.slice(0, 4).map((kw, i) => (
-                      <span key={i} className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{str(kw)}</span>
+                    {icp.keywords.slice(0, 4).map((kw, j) => (
+                      <span key={j} className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{str(kw)}</span>
                     ))}
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1">
-                  {icp.buyerPersonas.slice(0, 2).map((bp) => (
-                    <span key={bp.title} className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full">{bp.title}</span>
+                  {icp.buyerPersonas?.slice(0, 2).map((bp, j) => (
+                    <span key={j} className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full">{str(bp.title)}</span>
                   ))}
                 </div>
               </Card>
@@ -344,8 +344,8 @@ function StrategyTab({
         <section>
           <SectionHeader icon={BarChart3} title="Segments & Positioning" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {segments.map((seg) => (
-              <ExpandableSegmentCard key={seg.name} seg={seg} />
+            {segments.map((seg, i) => (
+              <ExpandableSegmentCard key={i} seg={seg} />
             ))}
           </div>
         </section>
@@ -366,11 +366,11 @@ function StrategyTab({
                 </tr>
               </thead>
               <tbody>
-                {competitors.slice(0, 8).map((c) => (
-                  <tr key={c.name} className="border-b border-white/5 hover:bg-slate-800/30">
-                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{c.name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{c.targetSegment}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs max-w-xs">{c.valueProp}</td>
+                {competitors.slice(0, 8).map((c, i) => (
+                  <tr key={i} className="border-b border-white/5 hover:bg-slate-800/30">
+                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{str(c.name)}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{str(c.targetSegment)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs max-w-xs">{str(c.valueProp)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {c.whereClientWins.slice(0, 2).map((w, i) => (
@@ -470,13 +470,13 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-semibold text-white">{seg.name}</p>
-            <p className="text-xs text-slate-500 capitalize">{seg.sizeCategory}</p>
+            <p className="font-semibold text-white">{str(seg.name)}</p>
+            <p className="text-xs text-slate-500 capitalize">{str(seg.sizeCategory)}</p>
           </div>
           <div className="flex items-center gap-2">
             {seg.estimatedPriority && (
-              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[seg.estimatedPriority] ?? TIER_COLOR["tier-3"]}`}>
-                {seg.estimatedPriority.replace("-", " ").toUpperCase()}
+              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${TIER_COLOR[str(seg.estimatedPriority)] ?? TIER_COLOR["tier-3"]}`}>
+                {str(seg.estimatedPriority).replace("-", " ").toUpperCase()}
               </span>
             )}
             <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -486,7 +486,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
         {seg.positioning?.messagingHook && (
           <div className="bg-slate-800/50 rounded-lg p-3">
             <p className="text-xs text-violet-400 font-medium mb-1">Messaging Hook</p>
-            <p className="text-sm text-slate-300">{seg.positioning.messagingHook}</p>
+            <p className="text-sm text-slate-300">{str(seg.positioning.messagingHook)}</p>
           </div>
         )}
 
@@ -504,7 +504,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.rationale && (
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Why This Segment</p>
-              <p className="text-sm text-slate-300 leading-relaxed">{seg.rationale}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{str(seg.rationale)}</p>
             </div>
           )}
 
@@ -534,7 +534,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.positioning?.ourAngle && (
             <div>
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1.5">Our Angle</p>
-              <p className="text-sm text-slate-300 leading-relaxed">{seg.positioning.ourAngle}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{str(seg.positioning.ourAngle)}</p>
             </div>
           )}
 
@@ -569,7 +569,7 @@ function ExpandableSegmentCard({ seg }: { seg: Segment }) {
           {seg.positioning?.ctaApproach && (
             <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg p-3">
               <p className="text-xs font-semibold text-violet-400 mb-1">CTA Approach</p>
-              <p className="text-sm text-slate-300">{seg.positioning.ctaApproach}</p>
+              <p className="text-sm text-slate-300">{str(seg.positioning.ctaApproach)}</p>
             </div>
           )}
         </div>
