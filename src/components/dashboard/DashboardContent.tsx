@@ -405,7 +405,7 @@ interface StoredCampaign {
   targetMarketName: string;
   pushedAt: string;
   stats: {
-    sent: number; opened: number; clicked: number; replied: number;
+    sent: number; opened: number; clicked: number; replied: number; bounced: number;
     openRate: number; clickRate: number; replyRate: number; status: string;
   } | null;
 }
