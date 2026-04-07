@@ -44,23 +44,29 @@ export const NEXT_STEP: Record<ColdEmailStep, ColdEmailStep | null> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateWithTimeout(params: { model: any; schema: any; prompt: string }, ms: number, label: string): Promise<any> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(new Error(`Timed out after ${ms / 1000}s (${label})`)),
-    ms
+
+  // Promise.race guarantees we don't hang if the LLM SDK ignores AbortSignal.
+  // AbortController still attempts to cancel the underlying HTTP request.
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Timed out after ${ms / 1000}s (${label})`));
+    }, ms)
   );
+
   try {
-    const { object } = await generateObject({
-      model: params.model,
-      schema: params.schema,
-      prompt: params.prompt,
-      maxRetries: 0,
-      abortSignal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return object;
+    return await Promise.race([
+      generateObject({
+        model: params.model,
+        schema: params.schema,
+        prompt: params.prompt,
+        maxRetries: 0,
+        abortSignal: controller.signal,
+      }).then((r) => r.object),
+      timeoutPromise,
+    ]);
   } catch (err) {
-    clearTimeout(timeoutId);
-    if (controller.signal.aborted) throw new Error(`Timed out after ${ms / 1000}s (${label})`);
+    controller.abort(); // clean up if LLM threw before timeout
     throw err;
   }
 }
