@@ -5,8 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db/client";
 import { errorResponse } from "@/lib/errors/handlers";
 import { inngest } from "@/../inngest/client";
+import { NEXT_STEP, type ColdEmailStep } from "@/../inngest/cold-email";
 
-/** POST — kick off background generation */
+/** POST — start strategy generation */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
@@ -29,7 +30,7 @@ export async function POST(
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
 
-    // Mark as pending immediately so UI can start polling
+    // Reset draft to PENDING — wipes any stale email data from previous runs
     await prisma.project.update({
       where: { id: projectId },
       data: {
@@ -41,10 +42,10 @@ export async function POST(
       },
     });
 
-    // Trigger background Inngest job
+    // Trigger the strategy step
     await inngest.send({
-      name: "gtm/cold-email.generate",
-      data: { projectId, targetMarketName },
+      name: "gtm/cold-email.run-step",
+      data: { projectId, targetMarketName, step: "strategy" satisfies ColdEmailStep },
     });
 
     return NextResponse.json({ status: "PENDING" });
@@ -53,7 +54,7 @@ export async function POST(
   }
 }
 
-/** PATCH — approve current step and continue generation */
+/** PATCH — approve current step and trigger the next one */
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
@@ -73,12 +74,23 @@ export async function PATCH(
       return NextResponse.json({ error: { code: "NOT_FOUND", message: "Project not found." } }, { status: 404 });
     }
 
-    // Write RUNNING to DB immediately so the polling loop doesn't see
-    // AWAITING_APPROVAL again before Inngest re-invokes the function.
-    // Without this the banner briefly reappears, enabling a second click
-    // that fires a premature approval event — dropped by Inngest, leaving
-    // the function stuck at the next waitForEvent.
     const existing = (project.coldEmailDraft ?? {}) as Record<string, unknown>;
+    const awaitingFor = existing.awaitingApprovalFor as ColdEmailStep | undefined;
+
+    if (!awaitingFor) {
+      return NextResponse.json({ error: { code: "BAD_REQUEST", message: "Nothing awaiting approval." } }, { status: 400 });
+    }
+
+    const nextStep = NEXT_STEP[awaitingFor];
+    if (!nextStep) {
+      // Should not happen — break_up_email goes straight to COMPLETE
+      return NextResponse.json({ error: { code: "BAD_REQUEST", message: "No next step." } }, { status: 400 });
+    }
+
+    const targetMarketName = (existing.targetMarketName as string | undefined) ?? "";
+
+    // Immediately flip to RUNNING in DB so polling doesn't show the approval
+    // banner again before the Inngest function picks up the event.
     await prisma.project.update({
       where: { id: projectId },
       data: {
@@ -90,13 +102,14 @@ export async function PATCH(
       },
     });
 
-    // Send approval event — Inngest resumes the waiting step
+    // Trigger the next step as a fresh Inngest invocation — no waitForEvent,
+    // no replay complexity.
     await inngest.send({
-      name: "cold-email/step.approved",
-      data: { projectId },
+      name: "gtm/cold-email.run-step",
+      data: { projectId, targetMarketName, step: nextStep },
     });
 
-    return NextResponse.json({ status: "approved" });
+    return NextResponse.json({ status: "running", nextStep });
   } catch (err) {
     return errorResponse(err);
   }
