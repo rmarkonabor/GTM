@@ -40,6 +40,11 @@ export function buildStepContext(ctx: WorkflowContext): string {
     parts.push(JSON.stringify(ctx.steps.SEGMENTATION, null, 2));
   }
 
+  if (ctx.steps.MANIFESTO) {
+    parts.push("\n=== MESSAGING & MANIFESTO ===");
+    parts.push(JSON.stringify(ctx.steps.MANIFESTO, null, 2));
+  }
+
   return parts.join("\n");
 }
 

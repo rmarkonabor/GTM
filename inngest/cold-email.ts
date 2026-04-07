@@ -25,7 +25,7 @@ const ColdEmailSchema = z.object({
   body: z.string().describe("Email body as plain text with spintax. Must follow all writing standards."),
   waitDays: z.number().int().min(0),
   angle: z.string().describe("The core angle/hook — what new reason to reply does this email give"),
-  annotations: z.array(EmailAnnotationSchema).min(2).max(4),
+  annotations: z.array(EmailAnnotationSchema).min(1).max(6),
 });
 
 const QualityCheckSchema = z.object({
@@ -40,7 +40,7 @@ const QualityCheckSchema = z.object({
 const ColdEmailOutputSchema = z.object({
   strategy_summary: z.string().describe("2-3 sentences on the strategic angle chosen for this market"),
   campaign_brief: z.string().describe("What this sequence achieves and why these angles were selected"),
-  subject_lines: z.array(SubjectLineSchema).length(3).describe("3 subject line options for email_1 only"),
+  subject_lines: z.array(SubjectLineSchema).min(1).max(3).describe("3 subject line options for email_1 only"),
   email_1: ColdEmailSchema.describe("Cold first touch: 50-100 words, 3-4 sentences, pain-focused, no pitch"),
   follow_up_1: ColdEmailSchema.describe("Follow-up adding a new reason to reply — different angle from email_1"),
   follow_up_2: ColdEmailSchema.describe("Second follow-up with yet another distinct angle"),
@@ -54,14 +54,19 @@ export const coldEmailGenerator = inngest.createFunction(
     id: "cold-email-generator",
     retries: 1,
     triggers: [{ event: "gtm/cold-email.generate" }],
-    onFailure: async ({ event, error }: { event: { data: { projectId: string; targetMarketName: string } }; error: Error }) => {
-      const { projectId, targetMarketName } = event.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onFailure: async ({ event, error }: any) => {
+      // In Inngest v4, onFailure receives inngest/function.failed.
+      // Original event data is nested at event.data.event.data — NOT event.data directly.
+      const original = (event?.data?.event?.data ?? {}) as { projectId?: string; targetMarketName?: string };
+      const { projectId, targetMarketName } = original;
+      if (!projectId) return;
       await prisma.project.update({
         where: { id: projectId },
         data: {
           coldEmailDraft: {
             status: "ERROR",
-            targetMarketName,
+            targetMarketName: targetMarketName ?? "",
             error: error?.message ?? "Generation failed. Please try again.",
             startedAt: new Date().toISOString(),
           },
