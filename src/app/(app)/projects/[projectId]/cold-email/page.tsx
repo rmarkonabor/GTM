@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Sparkles, Loader2, Send, AlertTriangle, Mail } from "lucide-react";
+import { Sparkles, Loader2, Send, AlertTriangle, Mail, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { checkSpam } from "@/lib/email/spam-words";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ColdEmailDraft {
-  status: "PENDING" | "RUNNING" | "COMPLETE" | "ERROR";
+  status: "PENDING" | "RUNNING" | "COMPLETE" | "ERROR" | "CANCELLED";
   targetMarketName: string;
   steps: EmailStep[];
   error?: string;
@@ -198,6 +198,8 @@ export default function ColdEmailPage() {
         } else if (d.status === "ERROR") {
           toast.error(d.error ?? "Generation failed. Please try again.");
           clearInterval(pollRef.current!); pollRef.current = null;
+        } else if (d.status === "CANCELLED") {
+          clearInterval(pollRef.current!); pollRef.current = null;
         }
       } catch { /* keep polling */ }
     }, 3000);
@@ -223,6 +225,15 @@ export default function ColdEmailPage() {
       setDraft(null);
     }
   }, [selectedMarket, projectId]);
+
+  const handleStop = useCallback(async () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    setDraft((prev) => prev ? { ...prev, status: "CANCELLED" } : null);
+    try {
+      await fetch(`/api/projects/${projectId}/cold-email`, { method: "DELETE" });
+    } catch { /* best-effort */ }
+    toast("Generation stopped.");
+  }, [projectId]);
 
   const handlePush = useCallback(async () => {
     if (!campaignName.trim()) { toast.warning("Enter a campaign name."); return; }
@@ -298,9 +309,19 @@ export default function ColdEmailPage() {
         </div>
 
         {generating && (
-          <div className="flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5 text-xs text-violet-400">
-            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-            Generating in the background — you can safely navigate away and come back.
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-violet-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+              Generating in the background — you can safely navigate away and come back.
+            </div>
+            <button
+              onClick={handleStop}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-400 transition-colors shrink-0"
+              title="Stop generation"
+            >
+              <Square className="h-3 w-3 fill-current" />
+              Stop
+            </button>
           </div>
         )}
 

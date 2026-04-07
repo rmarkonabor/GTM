@@ -89,7 +89,12 @@ export const coldEmailGenerator = inngest.createFunction(
       const context = buildStepContext(ctx);
       const prompt = buildColdEmailPrompt(context, targetMarketName);
       const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email");
-      const { object } = await generateObject({ model, schema: ColdEmailOutputSchema, prompt });
+      const { object } = await generateObject({
+        model,
+        schema: ColdEmailOutputSchema,
+        prompt,
+        abortSignal: AbortSignal.timeout(90_000), // 90s max — fail fast rather than hang
+      });
 
       return object.steps;
     });
