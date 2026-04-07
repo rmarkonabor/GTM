@@ -32,6 +32,21 @@ export const coldEmailGenerator = inngest.createFunction(
     id: "cold-email-generator",
     retries: 1,
     triggers: [{ event: "gtm/cold-email.generate" }],
+    onFailure: async ({ event, error }: { event: { data: { projectId: string; targetMarketName: string } }; error: Error }) => {
+      const { projectId, targetMarketName } = event.data;
+      await prisma.project.update({
+        where: { id: projectId },
+        data: {
+          coldEmailDraft: {
+            status: "ERROR",
+            targetMarketName,
+            steps: [],
+            error: error?.message ?? "Generation failed. Please try again.",
+            startedAt: new Date().toISOString(),
+          },
+        },
+      }).catch(() => {}); // best-effort — don't throw in failure handler
+    },
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: any) => {
@@ -57,17 +72,14 @@ export const coldEmailGenerator = inngest.createFunction(
 
     // Generate
     const result = await step.run("generate-emails", async () => {
-      const [project, user] = await Promise.all([
-        prisma.project.findUnique({ where: { id: projectId } }),
-        prisma.project.findUnique({
-          where: { id: projectId },
-          include: { user: true },
-        }),
-      ]);
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: { user: true },
+      });
 
-      if (!project || !user) throw new Error("Project not found");
+      if (!project) throw new Error("Project not found");
 
-      const llmRaw = safeDecrypt(user.user?.llmPreference ?? null);
+      const llmRaw = safeDecrypt(project.user?.llmPreference ?? null);
       if (!llmRaw) throw new Error("LLM not configured. Please add your API key in Settings.");
       const llmPreference = JSON.parse(llmRaw) as LLMPreference;
 

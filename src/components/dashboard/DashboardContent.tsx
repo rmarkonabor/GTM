@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Building2, Users, Target, Swords, BarChart3, MessageSquare,
   CheckCircle2, TrendingUp, Globe, ChevronRight, Rocket, ChevronDown,
@@ -452,7 +452,7 @@ function CampaignCard({ campaign }: { campaign: StoredCampaign }) {
           <StatPill label="Opened"   value={s.openRate}  sub="%" />
           <StatPill label="Clicked"  value={s.clickRate} sub="%" />
           <StatPill label="Replied"  value={s.replyRate} sub="%" />
-          <StatPill label="Bounced"  value={s.sent > 0 ? Math.round((s.sent - s.opened - (s.sent - s.opened)) / s.sent * 100) : 0} sub="%" />
+          <StatPill label="Bounced"  value={s.sent > 0 ? Math.round((s.bounced / s.sent) * 100) : 0} sub="%" />
         </div>
       ) : (
         <p className="text-xs text-slate-600 italic">Metrics unavailable — add Smartlead API key in Settings.</p>
@@ -466,7 +466,7 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadCampaigns = async (isRefresh = false) => {
+  const loadCampaigns = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
       const res = await fetch(`/api/projects/${project.id}/campaigns`);
@@ -476,9 +476,9 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [project.id]);
 
-  useEffect(() => { loadCampaigns(); }, [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadCampaigns(); }, [loadCampaigns]);
 
   return (
     <div className="space-y-5">
