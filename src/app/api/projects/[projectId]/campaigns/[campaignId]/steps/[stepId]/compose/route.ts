@@ -196,32 +196,55 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     parts.push(
-      `Write a personalized cold email using this structure:
+      `Write a personalized cold email for true cold outreach using {{FirstName}} and {{CompanyName}} as merge tag placeholders.
+
+The recipient does not know us. Write like this is a first touch from a stranger, so the email should feel light, respectful, and easy to reply to.
+
+Use this structure:
 
 1. Hook
-Start with a relevant question tied to the prospect's buyers, goals, or current challenge. It should feel specific and make them pause.
+Start with a simple and relevant question tied to their buyers, growth goal, hiring challenge, or pipeline problem.
+Do not make strong assumptions.
+Do not sound confrontational.
+The first line should create interest, not pressure.
 
 2. Relevance
-Briefly explain why you are reaching out and why this is relevant to their role or company right now.
+Briefly explain why you reached out.
+Tie it to a likely challenge or priority for their role or company, but use soft language like "seems", "may", "might", or "thought this could be relevant".
+Do not act like you already know their internal situation unless that context is explicitly provided.
 ${includeProof ? `
 3. Proof
-Add one short credibility point such as a relevant customer, audience, result, market signal, or concrete detail that supports the outreach.
+Include one short and believable proof point.
+This can be a relevant example, customer type, result, audience detail, or market pattern.
+Keep it light.
+Do not over explain.
+Do not stack multiple proof points.
 
 4. Soft CTA` : `
 3. Soft CTA`}
-End with a low pressure and clear call to action. Keep it simple and easy to answer.
+End with one low friction question.
+The CTA should feel easy to answer, like:
+"Open to a quick look?"
+"Worth a quick chat?"
+"Want me to send a few details?"
+Avoid asking for a long meeting in the first email.
 
 Rules:
-Use {{FirstName}} and {{CompanyName}} as merge tag placeholders.
-Write a punchy subject line under 10 words that is specific to their pain point, goal, or buyer access challenge.
-Keep the body under 150 words.
-Focus on their problem, priorities, or goals, not our features.
-Make it sound casual, direct, and human.
-Avoid generic filler like I hope this finds you well.
-Avoid sounding overly polished, salesy, or AI written.
-Use simple language.
-Only include one clear CTA.${!includeProof ? `
-Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly 3 parts: Hook, Relevance, and Soft CTA only.` : ""}`
+Use {{FirstName}} and {{CompanyName}} exactly as placeholders.
+Write a punchy subject line under 10 words.
+Keep the body under 120 words.
+Make it casual, direct, and human.
+The email should feel like it is opening a conversation, not trying to close one.
+Focus on their problem or priority more than our offer.
+Do not use filler phrases like "I hope this finds you well."
+Do not use aggressive or overly confident language.
+Do not use pressure tactics.
+Do not sound like a pitch deck.
+Do not mention features too early.
+Do not use phrases like "replace headcount", "book a 30 minute call", "ARR momentum", or anything that feels too salesy for a first touch.
+Do not reference funding, hiring, layoffs, or recent news unless that context is explicitly provided and clearly relevant.
+Only include one CTA.${!includeProof ? `
+Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly ${includeProof ? "4" : "3"} parts: Hook, Relevance, and Soft CTA only.` : ""}`
     );
 
     const systemPrompt = parts.join("\n");
