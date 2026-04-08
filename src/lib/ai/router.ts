@@ -15,6 +15,7 @@ export type TaskName =
   | "error-explanation"
   | "filter-translation"
   | "cold-email-compose"
+  | "linkedin-compose"
   | "spintax-generate";
 
 const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
@@ -32,6 +33,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "error-explanation": "SIMPLE",
   "filter-translation": "SIMPLE",
   "cold-email-compose": "MEDIUM",
+  "linkedin-compose": "MEDIUM",
   "spintax-generate": "MEDIUM",
 };
 

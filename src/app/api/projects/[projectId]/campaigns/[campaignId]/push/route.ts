@@ -61,7 +61,7 @@ export async function POST(
     for (const step of campaign.steps) {
       const variants = (step.variants as unknown as StepVariant[]) ?? [];
       if (variants.length === 0) continue;
-      await addSequenceStep(apiKey, slCampaignId, { waitDays: step.waitDays, variants }, step.seq);
+      await addSequenceStep(apiKey, slCampaignId, { type: (step as Record<string, unknown>).type as string | undefined, waitDays: step.waitDays, variants }, step.seq);
     }
 
     // Persist smartleadId + pushedAt

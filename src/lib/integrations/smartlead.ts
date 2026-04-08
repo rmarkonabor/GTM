@@ -57,24 +57,40 @@ function toEmailHtml(text: string): string {
 export async function addSequenceStep(
   apiKey: string,
   campaignId: number,
-  step: { waitDays: number; variants: StepVariant[] },
+  step: { type?: string; waitDays: number; variants: StepVariant[] },
   seq: number,
 ): Promise<void> {
   const [primary, ...rest] = step.variants;
   if (!primary) return; // nothing to send
 
-  const seqObj: Record<string, unknown> = {
-    seq_number: seq,
-    seq_delay_details: { delay_in_days: step.waitDays },
-    subject: primary.subject,
-    email_body: toEmailHtml(primary.body),
-  };
+  const isLinkedIn = step.type === "linkedin";
 
-  if (rest.length > 0) {
-    seqObj["seq_variants"] = rest.map((v) => ({
-      subject: v.subject,
-      email_body: toEmailHtml(v.body),
-    }));
+  let seqObj: Record<string, unknown>;
+
+  if (isLinkedIn) {
+    // LinkedIn steps: seq === 1 is a connection request note (≤300 chars),
+    // seq > 1 is a direct message. Smartlead uses type "linkedin_connection"
+    // or "linkedin_message" in the sequence payload.
+    // The message body is stored in the variant's `body` field.
+    seqObj = {
+      seq_number: seq,
+      seq_delay_details: { delay_in_days: step.waitDays },
+      type: seq === 1 ? "linkedin_connection" : "linkedin_message",
+      message: primary.body,
+    };
+  } else {
+    seqObj = {
+      seq_number: seq,
+      seq_delay_details: { delay_in_days: step.waitDays },
+      subject: primary.subject,
+      email_body: toEmailHtml(primary.body),
+    };
+    if (rest.length > 0) {
+      seqObj["seq_variants"] = rest.map((v) => ({
+        subject: v.subject,
+        email_body: toEmailHtml(v.body),
+      }));
+    }
   }
 
   await sl(apiKey, `/campaigns/${campaignId}/sequences`, {

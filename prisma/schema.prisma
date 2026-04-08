@@ -167,9 +167,12 @@ model CampaignStep {
   campaignId String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   seq        Int
+  // "email" | "linkedin"
+  type       String   @default("email")
   waitDays   Int      @default(0)
   // JSON array: [{ id: string, subject: string, body: string }]
   // First entry is Variant A; additional entries are B/C for A/B testing.
+  // For linkedin steps: subject is unused, body holds the message text.
   variants   Json     @default("[]")
   updatedAt  DateTime @updatedAt
 
