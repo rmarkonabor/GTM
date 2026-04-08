@@ -140,12 +140,19 @@ function StepCard({
   const [selSegment, setSelSegment] = useState<string | null>(null);
   const [composePrompt, setComposePrompt] = useState("");
   const [includeProof, setIncludeProof] = useState(true);
+  const [refineMode, setRefineMode] = useState(false);
   const [composing, setComposing] = useState(false);
   const [spintaxing, setSpintaxing] = useState(false);
   const [composeUsage, setComposeUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
   const [spintaxUsage, setSpintaxUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
 
+  const currentVariant = step.variants[activeIdx] ?? step.variants[0];
+
   async function handleCompose() {
+    if (refineMode && !currentVariant.subject && !currentVariant.body) {
+      toast.error("Nothing to refine — write some copy first.");
+      return;
+    }
     setComposing(true);
     try {
       const res = await fetch(
@@ -159,6 +166,9 @@ function StepCard({
             segmentId: selSegment,
             prompt: composePrompt,
             includeProof,
+            refineMode,
+            existingSubject: refineMode ? currentVariant.subject : undefined,
+            existingBody: refineMode ? currentVariant.body : undefined,
             seq: step.seq,
             totalSteps,
           }),
@@ -216,7 +226,6 @@ function StepCard({
     }
   }
 
-  const currentVariant = step.variants[activeIdx] ?? step.variants[0];
   if (!currentVariant) return null;
 
   function setField(field: "subject" | "body", value: string) {
@@ -339,7 +348,33 @@ function StepCard({
       {/* AI Composer panel */}
       {composerOpen && (
         <div className="mx-4 mb-3 mt-2 p-3 rounded-lg bg-slate-800/60 border border-violet-500/20 space-y-3">
-          <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest">AI Composer</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest">AI Composer</p>
+            <div className="flex items-center gap-1 p-0.5 bg-slate-900/60 rounded-md">
+              <button
+                onClick={() => setRefineMode(false)}
+                className={cn(
+                  "text-[10px] px-2.5 py-1 rounded transition-colors",
+                  !refineMode
+                    ? "bg-violet-600 text-white"
+                    : "text-slate-400 hover:text-slate-300"
+                )}
+              >
+                Fresh
+              </button>
+              <button
+                onClick={() => setRefineMode(true)}
+                className={cn(
+                  "text-[10px] px-2.5 py-1 rounded transition-colors",
+                  refineMode
+                    ? "bg-violet-600 text-white"
+                    : "text-slate-400 hover:text-slate-300"
+                )}
+              >
+                Refine existing
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <StrategySelect
               label="Industry"

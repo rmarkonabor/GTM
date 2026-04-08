@@ -24,6 +24,9 @@ const bodySchema = z.object({
   segmentId: z.string().nullable().optional(),
   prompt: z.string().default(""),
   includeProof: z.boolean().default(true),
+  refineMode: z.boolean().default(false),
+  existingSubject: z.string().optional(),
+  existingBody: z.string().optional(),
   seq: z.number().int().min(1),
   totalSteps: z.number().int().min(1),
 });
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { industryIdx, marketId, segmentId, prompt, includeProof, seq, totalSteps } = parsed.data;
+    const { industryIdx, marketId, segmentId, prompt, includeProof, refineMode, existingSubject, existingBody, seq, totalSteps } = parsed.data;
 
     // Verify ownership + load project and user in parallel
     const [project, user] = await Promise.all([
@@ -138,6 +141,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const parts: string[] = [];
     parts.push("You are an expert B2B cold email copywriter.\n");
 
+    if (refineMode && (existingSubject || existingBody)) {
+      parts.push("EXISTING EMAIL TO REFINE:");
+      if (existingSubject) parts.push(`Subject: ${existingSubject}`);
+      if (existingBody) parts.push(`Body:\n${existingBody}`);
+      parts.push("");
+    }
+
     if (websiteUrl || companyProfile) {
       parts.push("COMPANY:");
       if (websiteUrl) parts.push(`Website: ${websiteUrl}`);
@@ -195,10 +205,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parts.push(`INSTRUCTIONS: ${prompt.trim()}\n`);
     }
 
-    parts.push(
-      `Write a personalized cold email for true cold outreach using {{FirstName}} and {{CompanyName}} as merge tag placeholders.
+    const opening = refineMode
+      ? `Refine and improve the existing email above for true cold outreach to a cold lead who does not know us.
+Keep what works. Fix what doesn't. Do not start from scratch — preserve the intent and structure unless the instructions say otherwise.
+Apply the context and rules below to improve relevance, tone, and targeting.`
+      : `Write a personalized cold email for true cold outreach using {{FirstName}} and {{CompanyName}} as merge tag placeholders.
 
-The recipient does not know us. Write like this is a first touch from a stranger, so the email should feel light, respectful, and easy to reply to.
+The recipient does not know us. Write like this is a first touch from a stranger, so the email should feel light, respectful, and easy to reply to.`;
+
+    parts.push(
+      `${opening}
 
 Use this structure:
 
@@ -244,7 +260,7 @@ Do not mention features too early.
 Do not use phrases like "replace headcount", "book a 30 minute call", "ARR momentum", or anything that feels too salesy for a first touch.
 Do not reference funding, hiring, layoffs, or recent news unless that context is explicitly provided and clearly relevant.
 Only include one CTA.${!includeProof ? `
-Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly ${includeProof ? "4" : "3"} parts: Hook, Relevance, and Soft CTA only.` : ""}`
+Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly 3 parts: Hook, Relevance, and Soft CTA only.` : ""}`
     );
 
     const systemPrompt = parts.join("\n");
