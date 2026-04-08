@@ -23,6 +23,7 @@ const bodySchema = z.object({
   marketId: z.string().nullable().optional(),
   segmentId: z.string().nullable().optional(),
   prompt: z.string().default(""),
+  includeProof: z.boolean().default(true),
   seq: z.number().int().min(1),
   totalSteps: z.number().int().min(1),
 });
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { industryIdx, marketId, segmentId, prompt, seq, totalSteps } = parsed.data;
+    const { industryIdx, marketId, segmentId, prompt, includeProof, seq, totalSteps } = parsed.data;
 
     // Verify ownership + load project and user in parallel
     const [project, user] = await Promise.all([
@@ -202,11 +203,12 @@ Start with a relevant question tied to the prospect's buyers, goals, or current 
 
 2. Relevance
 Briefly explain why you are reaching out and why this is relevant to their role or company right now.
-
+${includeProof ? `
 3. Proof
 Add one short credibility point such as a relevant customer, audience, result, market signal, or concrete detail that supports the outreach.
 
-4. Soft CTA
+4. Soft CTA` : `
+3. Soft CTA`}
 End with a low pressure and clear call to action. Keep it simple and easy to answer.
 
 Rules:

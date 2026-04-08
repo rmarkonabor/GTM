@@ -139,6 +139,7 @@ function StepCard({
   const [selMarket, setSelMarket] = useState<string | null>(null);
   const [selSegment, setSelSegment] = useState<string | null>(null);
   const [composePrompt, setComposePrompt] = useState("");
+  const [includeProof, setIncludeProof] = useState(true);
   const [composing, setComposing] = useState(false);
   const [spintaxing, setSpintaxing] = useState(false);
   const [composeUsage, setComposeUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
@@ -157,6 +158,7 @@ function StepCard({
             marketId: selMarket,
             segmentId: selSegment,
             prompt: composePrompt,
+            includeProof,
             seq: step.seq,
             totalSteps,
           }),
@@ -357,6 +359,20 @@ function StepCard({
               value={selSegment}
               onChange={(v) => setSelSegment(v as string | null)}
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIncludeProof((p) => !p)}
+              className={cn(
+                "flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border transition-colors",
+                includeProof
+                  ? "border-violet-500/50 text-violet-400 bg-violet-900/20"
+                  : "border-white/10 text-slate-500 hover:text-slate-300"
+              )}
+            >
+              <span>{includeProof ? "✓" : "○"}</span>
+              Include proof point
+            </button>
           </div>
           <textarea
             placeholder="Additional instructions (tone, length, specific points…)"
