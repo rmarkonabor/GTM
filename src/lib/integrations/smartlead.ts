@@ -39,31 +39,38 @@ export async function createCampaign(apiKey: string, name: string): Promise<{ id
   });
 }
 
-export interface SequenceStep {
+export interface StepVariant {
+  id: string;
   subject: string;
   body: string;
-  /** Days to wait before sending (0 = send immediately for step 1) */
-  waitDays: number;
 }
 
 export async function addSequenceStep(
   apiKey: string,
   campaignId: number,
-  step: SequenceStep,
+  step: { waitDays: number; variants: StepVariant[] },
   seq: number,
 ): Promise<void> {
+  const [primary, ...rest] = step.variants;
+  if (!primary) return; // nothing to send
+
+  const seqObj: Record<string, unknown> = {
+    seq_number: seq,
+    seq_delay_details: { delay_in_days: step.waitDays },
+    subject: primary.subject,
+    email_body: primary.body,
+  };
+
+  if (rest.length > 0) {
+    seqObj["seq_variants"] = rest.map((v) => ({
+      subject: v.subject,
+      email_body: v.body,
+    }));
+  }
+
   await sl(apiKey, `/campaigns/${campaignId}/sequences`, {
     method: "POST",
-    body: JSON.stringify({
-      sequences: [
-        {
-          seq_number: seq,
-          seq_delay_details: { delay_in_days: step.waitDays },
-          subject: step.subject,
-          email_body: step.body,
-        },
-      ],
-    }),
+    body: JSON.stringify({ sequences: [seqObj] }),
   });
 }
 
