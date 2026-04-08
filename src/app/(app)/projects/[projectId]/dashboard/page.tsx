@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Link2, Check, Link2Off } from "lucide-react";
+import { Loader2, Link2, Check, Link2Off, Download, FileText, Printer } from "lucide-react";
 import { DashboardContent, DashboardProject } from "@/components/dashboard/DashboardContent";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -53,7 +53,12 @@ export default function DashboardPage({ params }: { params: Promise<{ projectId:
   return (
     <DashboardContent
       project={project}
-      heroExtra={<ShareButton projectId={projectId} />}
+      heroExtra={
+        <div className="flex items-center gap-1.5">
+          <ExportButton projectId={projectId} />
+          <ShareButton projectId={projectId} />
+        </div>
+      }
     />
   );
 }
@@ -152,5 +157,104 @@ function ShareButton({ projectId }: { projectId: string }) {
       <Link2 className="h-3.5 w-3.5" />
       Share
     </Button>
+  );
+}
+
+// ─── Export Button ─────────────────────────────────────────────────────────
+
+function ExportButton({ projectId }: { projectId: string }) {
+  const [open, setOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const handleMarkdown = async () => {
+    setOpen(false);
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/export`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const cd = res.headers.get("content-disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.href = url;
+      a.download = match?.[1] ?? "gtm-strategy.md";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to export. Try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePdf = () => {
+    setOpen(false);
+    window.open(`/export/${projectId}`, "_blank");
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <Button
+        onClick={() => setOpen((o) => !o)}
+        variant="ghost"
+        size="sm"
+        className="bg-white/10 hover:bg-white/20 text-white text-xs gap-1.5 h-8 px-3"
+        disabled={downloading}
+      >
+        {downloading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Download className="h-3.5 w-3.5" />
+        )}
+        Export
+      </Button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            zIndex: 50,
+            minWidth: "180px",
+          }}
+          className="bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+        >
+          <button
+            onClick={handleMarkdown}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 hover:text-white transition-colors text-left"
+          >
+            <FileText className="h-3.5 w-3.5 text-violet-400 flex-shrink-0" />
+            <div>
+              <div className="font-medium">Download Markdown</div>
+              <div className="text-slate-500 text-[10px]">Paste into Notion or Docs</div>
+            </div>
+          </button>
+          <div className="border-t border-white/5" />
+          <button
+            onClick={handlePdf}
+            className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 hover:text-white transition-colors text-left"
+          >
+            <Printer className="h-3.5 w-3.5 text-violet-400 flex-shrink-0" />
+            <div>
+              <div className="font-medium">Export PDF</div>
+              <div className="text-slate-500 text-[10px]">Opens print dialog</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

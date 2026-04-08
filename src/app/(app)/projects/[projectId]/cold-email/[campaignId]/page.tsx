@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2, Wand2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2, Wand2, Shuffle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import { resolveSpintax, countSpintaxBlocks, hasUnclosedBlocks } from "@/lib/email/spintax";
+import { formatCost, formatTokens } from "@/lib/ai/pricing";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ interface StepVariant {
 interface CampaignStep {
   id: string;
   seq: number;
+  type: "email" | "linkedin";
   waitDays: number;
   variants: StepVariant[];
 }
@@ -39,10 +41,13 @@ interface Campaign {
 interface StrategyIndustry { idx: number; label: string; data: Record<string, unknown>; }
 interface StrategyMarket   { id: string;  name: string;  data: Record<string, unknown>; }
 interface StrategySegment  { id: string;  name: string;  data: Record<string, unknown>; }
+interface StrategyPersona  { idx: number; title: string; goals: string[]; challenges: string[]; triggerEvents: string[]; }
+interface StrategyICP      { idx: number; label: string; personas: StrategyPersona[]; }
 interface StrategyData {
   industries: StrategyIndustry[];
   markets:    StrategyMarket[];
   segments:   StrategySegment[];
+  icps:       StrategyICP[];
 }
 
 // ─── Strategy select helper ───────────────────────────────────────────────────
@@ -120,6 +125,7 @@ function StepCard({
   onDelete,
   onUpdateVariants,
   onUpdateWaitDays,
+  onUpdateType,
 }: {
   step: CampaignStep;
   isOnly: boolean;
@@ -130,6 +136,7 @@ function StepCard({
   onDelete: () => void;
   onUpdateVariants: (variants: StepVariant[]) => void;
   onUpdateWaitDays: (days: number) => void;
+  onUpdateType: (type: "email" | "linkedin") => void;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [preview, setPreview] = useState(false);
@@ -138,9 +145,22 @@ function StepCard({
   const [selMarket, setSelMarket] = useState<string | null>(null);
   const [selSegment, setSelSegment] = useState<string | null>(null);
   const [composePrompt, setComposePrompt] = useState("");
+  const [selIcpIdx, setSelIcpIdx] = useState<number | null>(null);
+  const [selPersonaIdx, setSelPersonaIdx] = useState<number | null>(null);
+  const [includeProof, setIncludeProof] = useState(true);
+  const [refineMode, setRefineMode] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [spintaxing, setSpintaxing] = useState(false);
+  const [composeUsage, setComposeUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
+  const [spintaxUsage, setSpintaxUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
+
+  const currentVariant = step.variants[activeIdx] ?? step.variants[0];
 
   async function handleCompose() {
+    if (refineMode && !currentVariant.subject && !currentVariant.body) {
+      toast.error("Nothing to refine — write some copy first.");
+      return;
+    }
     setComposing(true);
     try {
       const res = await fetch(
@@ -152,7 +172,13 @@ function StepCard({
             industryIdx: selIndustry,
             marketId: selMarket,
             segmentId: selSegment,
+            icpIdx: selIcpIdx,
+            personaIdx: selPersonaIdx,
             prompt: composePrompt,
+            includeProof,
+            refineMode,
+            existingSubject: refineMode ? currentVariant.subject : undefined,
+            existingBody: refineMode ? currentVariant.body : undefined,
             seq: step.seq,
             totalSteps,
           }),
@@ -167,6 +193,7 @@ function StepCard({
         i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
       );
       onUpdateVariants(updated);
+      if (data.usage) setComposeUsage(data.usage);
       toast.success("Email copy generated.");
     } catch {
       toast.error("Network error generating copy.");
@@ -175,8 +202,95 @@ function StepCard({
     }
   }
 
-  const currentVariant = step.variants[activeIdx] ?? step.variants[0];
+  async function handleSpintax() {
+    const variant = step.variants[activeIdx] ?? step.variants[0];
+    if (!variant?.subject.trim() && !variant?.body.trim()) {
+      toast.error("Write some copy first before adding spintax.");
+      return;
+    }
+    setSpintaxing(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/campaigns/${campaignId}/steps/${step.id}/spintax`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject: variant.subject, body: variant.body }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to generate spintax.");
+        return;
+      }
+      const updated = step.variants.map((v, i) =>
+        i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
+      );
+      onUpdateVariants(updated);
+      if (data.usage) setSpintaxUsage(data.usage);
+      toast.success("Spintax added.");
+    } catch {
+      toast.error("Network error generating spintax.");
+    } finally {
+      setSpintaxing(false);
+    }
+  }
+
   if (!currentVariant) return null;
+
+  async function handleComposeLi() {
+    if (refineMode && !currentVariant.body) {
+      toast.error("Nothing to refine — write a message first.");
+      return;
+    }
+    setComposing(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/campaigns/${campaignId}/steps/${step.id}/compose-linkedin`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            marketId: selMarket,
+            segmentId: selSegment,
+            icpIdx: selIcpIdx,
+            personaIdx: selPersonaIdx,
+            prompt: composePrompt,
+            refineMode,
+            existingMessage: refineMode ? currentVariant.body : undefined,
+            seq: step.seq,
+            totalSteps,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to generate message.");
+        return;
+      }
+      const updated = step.variants.map((v, i) =>
+        i === activeIdx ? { ...v, subject: "", body: data.message } : v
+      );
+      onUpdateVariants(updated);
+      if (data.usage) setComposeUsage(data.usage);
+      toast.success("LinkedIn message generated.");
+    } catch {
+      toast.error("Network error generating message.");
+    } finally {
+      setComposing(false);
+    }
+  }
+
+  function handleTypeChange(newType: "email" | "linkedin") {
+    if (newType === step.type) return;
+    if (newType === "linkedin" && step.variants.length > 1) {
+      // Warn before silently discarding extra variants
+      toast.warning("Switched to LinkedIn. Extra variants removed — LinkedIn steps support one message only.");
+      onUpdateVariants([step.variants[0]]);
+      setActiveIdx(0);
+    }
+    onUpdateType(newType);
+  }
 
   function setField(field: "subject" | "body", value: string) {
     const updated = step.variants.map((v, i) =>
@@ -211,12 +325,56 @@ function StepCard({
         <span className="text-xs font-semibold text-violet-400 bg-violet-900/30 px-2 py-0.5 rounded-full">
           Step {step.seq}
         </span>
+        {/* Type toggle */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-slate-900/60 rounded-md border border-white/5">
+          <button
+            onClick={() => handleTypeChange("email")}
+            title="Email step"
+            className={cn(
+              "flex items-center gap-1 text-[10px] px-2 py-0.5 rounded transition-colors",
+              step.type !== "linkedin"
+                ? "bg-slate-700 text-slate-200"
+                : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            <Mail className="h-3 w-3" /> Email
+          </button>
+          <button
+            onClick={() => handleTypeChange("linkedin")}
+            title="LinkedIn step"
+            className={cn(
+              "flex items-center gap-1 text-[10px] px-2 py-0.5 rounded transition-colors",
+              step.type === "linkedin"
+                ? "bg-[#0077b5]/80 text-white"
+                : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn
+          </button>
+        </div>
         <WaitSelector
           value={step.waitDays}
           onChange={(days) => onUpdateWaitDays(days)}
           disabled={step.seq === 1}
         />
         <div className="flex-1" />
+        {step.type !== "linkedin" && (
+          <>
+            <button
+              onClick={handleSpintax}
+              disabled={spintaxing}
+              title="Generate spintax variations"
+              className="text-slate-500 hover:text-violet-400 transition-colors disabled:opacity-40"
+            >
+              {spintaxing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />}
+            </button>
+            {spintaxUsage && !spintaxing && (
+              <span className="text-[10px] text-slate-600 tabular-nums" title={`${spintaxUsage.inputTokens + spintaxUsage.outputTokens} tokens · ${spintaxUsage.model}`}>
+                {formatCost(spintaxUsage.estimatedCostUsd)}
+              </span>
+            )}
+          </>
+        )}
         <button
           onClick={() => setComposerOpen((p) => !p)}
           title="AI Compose"
@@ -245,69 +403,182 @@ function StepCard({
         )}
       </div>
 
-      {/* Variant tabs */}
-      <div className="flex items-center gap-1 px-4 pt-3">
-        {step.variants.map((v, i) => (
-          <div key={v.id} className="flex items-center gap-1">
-            <button
-              onClick={() => setActiveIdx(i)}
-              className={cn(
-                "px-3 py-1 rounded-t text-xs font-medium transition-colors border-b-2",
-                i === activeIdx
-                  ? "text-violet-300 border-violet-500 bg-violet-900/20"
-                  : "text-slate-500 border-transparent hover:text-slate-300"
-              )}
-            >
-              Variant {String.fromCharCode(65 + i)}
-            </button>
-            {i === activeIdx && step.variants.length > 1 && (
+      {/* Variant tabs — email only */}
+      {step.type !== "linkedin" && (
+        <div className="flex items-center gap-1 px-4 pt-3">
+          {step.variants.map((v, i) => (
+            <div key={v.id} className="flex items-center gap-1">
               <button
-                onClick={() => deleteVariant(i)}
-                className="text-slate-600 hover:text-red-400 transition-colors mb-0.5"
-                title="Remove variant"
+                onClick={() => setActiveIdx(i)}
+                className={cn(
+                  "px-3 py-1 rounded-t text-xs font-medium transition-colors border-b-2",
+                  i === activeIdx
+                    ? "text-violet-300 border-violet-500 bg-violet-900/20"
+                    : "text-slate-500 border-transparent hover:text-slate-300"
+                )}
               >
-                <Trash2 className="h-3 w-3" />
+                Variant {String.fromCharCode(65 + i)}
               </button>
-            )}
-          </div>
-        ))}
-        {step.variants.length < 3 && (
-          <button
-            onClick={addVariant}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-violet-400 transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-            Add Variant
-          </button>
-        )}
-      </div>
+              {i === activeIdx && step.variants.length > 1 && (
+                <button
+                  onClick={() => deleteVariant(i)}
+                  className="text-slate-600 hover:text-red-400 transition-colors mb-0.5"
+                  title="Remove variant"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+          {step.variants.length < 3 && (
+            <button
+              onClick={addVariant}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-violet-400 transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Add Variant
+            </button>
+          )}
+        </div>
+      )}
 
       {/* AI Composer panel */}
       {composerOpen && (
         <div className="mx-4 mb-3 mt-2 p-3 rounded-lg bg-slate-800/60 border border-violet-500/20 space-y-3">
-          <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest">AI Composer</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest">
+              {step.type === "linkedin" ? "LinkedIn Composer" : "AI Composer"}
+            </p>
+            <div className="flex items-center gap-1 p-0.5 bg-slate-900/60 rounded-md">
+              <button
+                onClick={() => setRefineMode(false)}
+                className={cn(
+                  "text-[10px] px-2.5 py-1 rounded transition-colors",
+                  !refineMode ? "bg-violet-600 text-white" : "text-slate-400 hover:text-slate-300"
+                )}
+              >
+                Fresh
+              </button>
+              <button
+                onClick={() => setRefineMode(true)}
+                className={cn(
+                  "text-[10px] px-2.5 py-1 rounded transition-colors",
+                  refineMode ? "bg-violet-600 text-white" : "text-slate-400 hover:text-slate-300"
+                )}
+              >
+                Refine existing
+              </button>
+            </div>
+          </div>
+
+          {/* Email: industry + market + segment */}
+          {step.type !== "linkedin" && (
+            <div className="grid grid-cols-3 gap-2">
+              <StrategySelect
+                label="Industry"
+                options={(strategy?.industries ?? []).map((i) => ({ id: i.idx, name: i.label }))}
+                value={selIndustry}
+                onChange={(v) => setSelIndustry(v !== null ? Number(v) : null)}
+              />
+              <StrategySelect
+                label="Target Market"
+                options={(strategy?.markets ?? []).map((m) => ({ id: m.id, name: m.name }))}
+                value={selMarket}
+                onChange={(v) => setSelMarket(v as string | null)}
+              />
+              <StrategySelect
+                label="Segment"
+                options={(strategy?.segments ?? []).map((s) => ({ id: s.id, name: s.name }))}
+                value={selSegment}
+                onChange={(v) => setSelSegment(v as string | null)}
+              />
+            </div>
+          )}
+
+          {/* LinkedIn: market + segment only (no industry needed) */}
+          {step.type === "linkedin" && (
+            <div className="grid grid-cols-2 gap-2">
+              <StrategySelect
+                label="Target Market"
+                options={(strategy?.markets ?? []).map((m) => ({ id: m.id, name: m.name }))}
+                value={selMarket}
+                onChange={(v) => setSelMarket(v as string | null)}
+              />
+              <StrategySelect
+                label="Segment"
+                options={(strategy?.segments ?? []).map((s) => ({ id: s.id, name: s.name }))}
+                value={selSegment}
+                onChange={(v) => setSelSegment(v as string | null)}
+              />
+            </div>
+          )}
+
+          {/* ICP + Persona (both types) */}
+          <div className="grid grid-cols-2 gap-2">
             <StrategySelect
-              label="Industry"
-              options={(strategy?.industries ?? []).map((i) => ({ id: i.idx, name: i.label }))}
-              value={selIndustry}
-              onChange={(v) => setSelIndustry(v !== null ? Number(v) : null)}
+              label="ICP / Niche"
+              options={(strategy?.icps ?? []).map((icp) => ({ id: icp.idx, name: icp.label }))}
+              value={selIcpIdx}
+              onChange={(v) => {
+                const next = v !== null ? Number(v) : null;
+                setSelIcpIdx(next);
+                setSelPersonaIdx(null);
+              }}
             />
             <StrategySelect
-              label="Target Market"
-              options={(strategy?.markets ?? []).map((m) => ({ id: m.id, name: m.name }))}
-              value={selMarket}
-              onChange={(v) => setSelMarket(v as string | null)}
-            />
-            <StrategySelect
-              label="Segment"
-              options={(strategy?.segments ?? []).map((s) => ({ id: s.id, name: s.name }))}
-              value={selSegment}
-              onChange={(v) => setSelSegment(v as string | null)}
+              label="Buyer Persona"
+              options={
+                selIcpIdx != null
+                  ? (strategy?.icps?.[selIcpIdx]?.personas ?? []).map((p) => ({ id: p.idx, name: p.title }))
+                  : []
+              }
+              value={selPersonaIdx}
+              onChange={(v) => setSelPersonaIdx(v !== null ? Number(v) : null)}
             />
           </div>
+          {(strategy?.icps?.length ?? 0) === 0 && (
+            <p className="text-[10px] text-slate-600 -mt-1">
+              ICP and Persona selectors populate after the ICP step runs in your GTM strategy.
+            </p>
+          )}
+
+          {/* Proof toggle — email only */}
+          {step.type !== "linkedin" && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIncludeProof((p) => !p)}
+                className={cn(
+                  "flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border transition-colors",
+                  includeProof
+                    ? "border-violet-500/50 text-violet-400 bg-violet-900/20"
+                    : "border-white/10 text-slate-500 hover:text-slate-300"
+                )}
+              >
+                <span>{includeProof ? "✓" : "○"}</span>
+                Include proof point
+              </button>
+            </div>
+          )}
+
+          {/* LinkedIn char limit hint */}
+          {step.type === "linkedin" && (() => {
+            const liLimit = step.seq === 1 ? 300 : 1000;
+            const msgLen = currentVariant.body.length;
+            const over = msgLen > liLimit;
+            return (
+              <p className={cn("text-[10px]", over ? "text-red-400 font-medium" : "text-slate-500")}>
+                {step.seq === 1 ? "Connection note" : "Follow-up message"} — {msgLen}/{liLimit} chars
+                {over && " · over limit, shorten before pushing"}
+              </p>
+            );
+          })()}
+
           <textarea
-            placeholder="Additional instructions (tone, length, specific points…)"
+            placeholder={
+              step.type === "linkedin"
+                ? "Additional instructions (tone, angle, specific points…)"
+                : "Additional instructions (tone, length, specific points…)"
+            }
             value={composePrompt}
             onChange={(e) => setComposePrompt(e.target.value)}
             rows={2}
@@ -315,7 +586,7 @@ function StepCard({
           />
           <Button
             size="sm"
-            onClick={handleCompose}
+            onClick={step.type === "linkedin" ? handleComposeLi : handleCompose}
             disabled={composing}
             className="gap-2 w-full"
           >
@@ -324,13 +595,58 @@ function StepCard({
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            {composing ? "Generating…" : "Generate Copy"}
+            {composing
+              ? "Generating…"
+              : step.type === "linkedin"
+              ? "Generate Message"
+              : "Generate Copy"}
           </Button>
+          {composeUsage && !composing && (
+            <p className="text-[10px] text-slate-500 text-center tabular-nums">
+              {formatTokens(composeUsage.inputTokens + composeUsage.outputTokens)} tokens
+              {" · "}{formatCost(composeUsage.estimatedCostUsd)}
+              {" · "}<span className="text-slate-600">{composeUsage.model}</span>
+            </p>
+          )}
         </div>
       )}
 
-      {/* Variant editor */}
-      {!preview ? (
+      {/* LinkedIn message editor */}
+      {step.type === "linkedin" && (() => {
+        const liLimit = step.seq === 1 ? 300 : 1000;
+        const msgLen = currentVariant.body.length;
+        const overLimit = msgLen > liLimit;
+        return !preview ? (
+          <div className="px-4 pb-4 pt-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-slate-400">Message</label>
+              <span className={cn("text-[10px] tabular-nums", overLimit ? "text-red-400" : "text-slate-500")}>
+                {msgLen}/{liLimit}
+              </span>
+            </div>
+            <textarea
+              value={currentVariant.body}
+              onChange={(e) => setField("body", e.target.value)}
+              placeholder={step.seq === 1 ? "Write your connection note…" : "Write your follow-up message…"}
+              rows={step.seq === 1 ? 4 : 8}
+              className={cn(
+                "w-full rounded-md border bg-slate-800/50 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 resize-y",
+                overLimit ? "border-red-500/50 focus:ring-red-500" : "border-white/10 focus:ring-violet-500"
+              )}
+            />
+          </div>
+        ) : (
+          <div className="px-4 pb-4 pt-2 space-y-2">
+            <div className="text-xs text-slate-500 mb-2">Preview</div>
+            <div className="bg-slate-800/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white whitespace-pre-wrap min-h-[6rem]">
+              {currentVariant.body || <span className="text-slate-600 italic">No message</span>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Email variant editor */}
+      {step.type !== "linkedin" && (!preview ? (
         <div className="px-4 pb-4 pt-2 space-y-3">
           {/* Subject */}
           <div className="space-y-1">
@@ -377,7 +693,7 @@ function StepCard({
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -405,7 +721,13 @@ export default function CampaignEditorPage({
       const res = await fetch(`/api/projects/${projectId}/campaigns/${campaignId}`);
       if (res.ok) {
         const data = await res.json();
-        setCampaign(data.campaign);
+        // Normalise steps — type defaults to "email" until migration runs
+        const raw = data.campaign;
+        setCampaign({
+          ...raw,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          steps: (raw.steps ?? []).map((s: any) => ({ ...s, type: s.type ?? "email" })),
+        });
       } else if (res.status === 404) {
         router.replace(`/projects/${projectId}/cold-email`);
       } else {
@@ -437,6 +759,8 @@ export default function CampaignEditorPage({
         const tm = steps.find((s: any) => s.stepName === "TARGET_MARKETS");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sg = steps.find((s: any) => s.stepName === "SEGMENTATION");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const icpStep = steps.find((s: any) => s.stepName === "ICP");
         setStrategy({
           industries: (ip?.output?.industries ?? []).map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -457,6 +781,19 @@ export default function CampaignEditorPage({
             id: s.id ?? s.name,
             name: s.estimatedPriority ? `${s.name} (${s.estimatedPriority})` : s.name,
             data: s,
+          })),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          icps: (icpStep?.output?.icps ?? []).map((icp: any, i: number) => ({
+            idx: i,
+            label: [icp.niche, icp.standardIndustry].filter(Boolean).join(" / ") || `ICP ${i + 1}`,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            personas: (icp.buyerPersonas ?? []).map((p: any, j: number) => ({
+              idx: j,
+              title: p.title ?? `Persona ${j + 1}`,
+              goals: p.goals ?? [],
+              challenges: p.challenges ?? [],
+              triggerEvents: p.triggerEvents ?? [],
+            })),
           })),
         });
       })
@@ -479,7 +816,7 @@ export default function CampaignEditorPage({
 
   // ── Update step (debounced) ──────────────────────────────────────────────
 
-  function scheduleStepSave(stepId: string, data: { waitDays?: number; variants?: StepVariant[] }) {
+  function scheduleStepSave(stepId: string, data: { waitDays?: number; variants?: StepVariant[]; type?: "email" | "linkedin" }) {
     clearTimeout(saveTimers.current[stepId]);
     saveTimers.current[stepId] = setTimeout(async () => {
       await fetch(`/api/projects/${projectId}/campaigns/${campaignId}/steps/${stepId}`, {
@@ -504,6 +841,14 @@ export default function CampaignEditorPage({
       return { ...prev, steps: prev.steps.map((s) => s.id === stepId ? { ...s, waitDays } : s) };
     });
     scheduleStepSave(stepId, { waitDays });
+  }
+
+  function handleUpdateType(stepId: string, type: "email" | "linkedin") {
+    setCampaign((prev) => {
+      if (!prev) return prev;
+      return { ...prev, steps: prev.steps.map((s) => s.id === stepId ? { ...s, type } : s) };
+    });
+    scheduleStepSave(stepId, { type });
   }
 
   // ── Add step ────────────────────────────────────────────────────────────
@@ -644,6 +989,7 @@ export default function CampaignEditorPage({
               onDelete={() => handleDeleteStep(step.id)}
               onUpdateVariants={(variants) => handleUpdateVariants(step.id, variants)}
               onUpdateWaitDays={(days) => handleUpdateWaitDays(step.id, days)}
+              onUpdateType={(type) => handleUpdateType(step.id, type)}
             />
             {/* Add step between */}
             {idx < campaign.steps.length - 1 && (
