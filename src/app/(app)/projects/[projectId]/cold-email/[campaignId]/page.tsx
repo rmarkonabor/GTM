@@ -258,9 +258,14 @@ export default function CampaignEditorPage({
       if (res.ok) {
         const data = await res.json();
         setCampaign(data.campaign);
-      } else {
+      } else if (res.status === 404) {
         router.replace(`/projects/${projectId}/cold-email`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error?.message ?? "Failed to load campaign.");
       }
+    } catch {
+      toast.error("Network error — could not load campaign.");
     } finally {
       setLoading(false);
     }
@@ -325,7 +330,11 @@ export default function CampaignEditorPage({
       });
       if (res.ok) {
         await fetchCampaign();
+      } else {
+        toast.error("Failed to add step.");
       }
+    } catch {
+      toast.error("Network error — could not add step.");
     } finally {
       setAddingStep(false);
     }
@@ -334,21 +343,27 @@ export default function CampaignEditorPage({
   // ── Delete step ─────────────────────────────────────────────────────────
 
   async function handleDeleteStep(stepId: string) {
-    const res = await fetch(
-      `/api/projects/${projectId}/campaigns/${campaignId}/steps/${stepId}`,
-      { method: "DELETE" }
-    );
-    if (res.ok) {
-      setCampaign((prev) =>
-        prev
-          ? {
-              ...prev,
-              steps: prev.steps
-                .filter((s) => s.id !== stepId)
-                .map((s, i) => ({ ...s, seq: i + 1 })),
-            }
-          : prev
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/campaigns/${campaignId}/steps/${stepId}`,
+        { method: "DELETE" }
       );
+      if (res.ok) {
+        setCampaign((prev) =>
+          prev
+            ? {
+                ...prev,
+                steps: prev.steps
+                  .filter((s) => s.id !== stepId)
+                  .map((s, i) => ({ ...s, seq: i + 1 })),
+              }
+            : prev
+        );
+      } else {
+        toast.error("Failed to delete step.");
+      }
+    } catch {
+      toast.error("Network error — could not delete step.");
     }
   }
 

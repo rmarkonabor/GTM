@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, LayoutDashboard,
@@ -98,11 +99,15 @@ function CampaignSection({ projectId, pathname }: { projectId: string; pathname:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Untitled Campaign" }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        await fetchCampaigns();
-        router.push(`/projects/${projectId}/cold-email/${data.campaign.id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to create campaign.");
+        return;
       }
+      router.push(`/projects/${projectId}/cold-email/${data.campaign.id}`);
+      fetchCampaigns(); // refresh sidebar list in background
+    } catch {
+      toast.error("Network error — could not create campaign.");
     } finally {
       setCreating(false);
     }

@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Mail, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function ColdEmailIndexPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
@@ -37,10 +38,14 @@ export default function ColdEmailIndexPage({ params }: { params: Promise<{ proje
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Untitled Campaign" }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/projects/${projectId}/cold-email/${data.campaign.id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to create campaign.");
+        return;
       }
+      router.push(`/projects/${projectId}/cold-email/${data.campaign.id}`);
+    } catch {
+      toast.error("Network error — could not create campaign.");
     } finally {
       setCreating(false);
     }
