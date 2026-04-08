@@ -16,6 +16,8 @@ const schema = z.object({
       importantProblems: z.array(z.string()),
       macroTrends: z.array(z.string()),
       whyRightMarket: z.string(),
+      whyNow: z.string().optional(),
+      whyUs: z.string().optional(),
       priorityScore: z.number(),
     })
   ).max(5),

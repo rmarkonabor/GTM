@@ -16,6 +16,8 @@ const competitorSchema = z.object({
   whereClientWins: z.array(z.string()),
   targetSegment: z.string(),
   pricingModel: z.string().optional(),
+  threatLevel: z.enum(["high", "medium", "low"]).optional(),
+  edgeTrend: z.enum(["gaining", "holding", "losing"]).optional(),
 });
 
 const schema = z.object({

@@ -157,17 +157,31 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedMarket.name) parts.push(`Name: ${selectedMarket.name}`);
       if (selectedMarket.urgentProblems?.length)
         parts.push(`Urgent problems: ${selectedMarket.urgentProblems.join(", ")}`);
+      if (selectedMarket.whyNow) parts.push(`Why now: ${selectedMarket.whyNow}`);
+      if (selectedMarket.whyUs) parts.push(`Our edge: ${selectedMarket.whyUs}`);
       parts.push("");
     }
 
     if (selectedSegment) {
       parts.push("SEGMENT:");
       if (selectedSegment.name) parts.push(`Name: ${selectedSegment.name}`);
+      if (selectedSegment.buyingMotion) parts.push(`Buying motion: ${selectedSegment.buyingMotion}`);
+      if (selectedSegment.painMultiplier) parts.push(`Pain impact: ${selectedSegment.painMultiplier}`);
       const pos = selectedSegment.positioning;
       if (pos) {
         if (pos.messagingHook) parts.push(`Messaging hook: ${pos.messagingHook}`);
         if (pos.ourAngle) parts.push(`Our angle: ${pos.ourAngle}`);
       }
+      parts.push("");
+    }
+
+    if (selectedICP) {
+      parts.push("RECIPIENT ICP:");
+      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
+      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
+      if (selectedICP.engagementModel) parts.push(`Buying model: ${selectedICP.engagementModel}`);
+      if (selectedICP.lossReasons?.length)
+        parts.push(`Common loss reasons: ${selectedICP.lossReasons.join(", ")}`);
       parts.push("");
     }
 
@@ -178,11 +192,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         parts.push(`Goals: ${selectedPersona.goals.join(", ")}`);
       if (selectedPersona.challenges?.length)
         parts.push(`Challenges: ${selectedPersona.challenges.join(", ")}`);
-      parts.push("");
-    } else if (selectedICP) {
-      parts.push("RECIPIENT ICP:");
-      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
-      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
       parts.push("");
     }
 

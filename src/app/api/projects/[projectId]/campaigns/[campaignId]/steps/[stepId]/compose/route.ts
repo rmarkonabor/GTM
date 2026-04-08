@@ -184,6 +184,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedMarket.priorityScore != null) parts.push(`Priority score: ${selectedMarket.priorityScore}/10`);
       if (selectedMarket.urgentProblems?.length) parts.push(`Urgent problems: ${selectedMarket.urgentProblems.join(", ")}`);
       if (selectedMarket.macroTrends?.length) parts.push(`Macro trends: ${selectedMarket.macroTrends.join(", ")}`);
+      if (selectedMarket.whyNow) parts.push(`Why now: ${selectedMarket.whyNow}`);
+      if (selectedMarket.whyUs) parts.push(`Our edge: ${selectedMarket.whyUs}`);
       parts.push("");
     }
 
@@ -192,6 +194,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedSegment.name) parts.push(`Name: ${selectedSegment.name}`);
       if (selectedSegment.estimatedPriority) parts.push(`Priority: ${selectedSegment.estimatedPriority}`);
       if (selectedSegment.sizeCategory) parts.push(`Size: ${selectedSegment.sizeCategory}`);
+      if (selectedSegment.buyingMotion) parts.push(`Buying motion: ${selectedSegment.buyingMotion}`);
+      if (selectedSegment.painMultiplier) parts.push(`Pain impact: ${selectedSegment.painMultiplier}`);
       const pos = selectedSegment.positioning;
       if (pos) {
         if (pos.messagingHook) parts.push(`Messaging hook: ${pos.messagingHook}`);
@@ -200,6 +204,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         if (pos.proofPoints?.length) parts.push(`Proof points: ${pos.proofPoints.join(", ")}`);
         if (pos.ctaApproach) parts.push(`CTA: ${pos.ctaApproach}`);
       }
+      parts.push("");
+    }
+
+    if (selectedICP) {
+      parts.push("RECIPIENT ICP:");
+      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
+      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
+      if (selectedICP.engagementModel) parts.push(`Buying model: ${selectedICP.engagementModel}`);
+      if (selectedICP.decisionCriteria?.length)
+        parts.push(`Decision criteria: ${selectedICP.decisionCriteria.join(", ")}`);
+      if (selectedICP.lossReasons?.length)
+        parts.push(`Common loss reasons: ${selectedICP.lossReasons.join(", ")}`);
       parts.push("");
     }
 
@@ -212,12 +228,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         parts.push(`Challenges: ${selectedPersona.challenges.join(", ")}`);
       if (selectedPersona.triggerEvents?.length)
         parts.push(`Trigger events: ${selectedPersona.triggerEvents.join(", ")}`);
-      parts.push("");
-    } else if (selectedICP) {
-      // ICP selected but no specific persona — still use niche/industry context
-      parts.push("RECIPIENT ICP:");
-      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
-      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
       parts.push("");
     }
 
