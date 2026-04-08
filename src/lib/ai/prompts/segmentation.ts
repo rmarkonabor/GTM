@@ -50,6 +50,7 @@ Examples:
 - "~15% revenue leak from poor follow-up cadence"
 - "2x longer sales cycles due to manual proposal processes"
 Be specific — use numbers, time ranges, or percentages where possible.
+DO NOT output vague estimates like "significant impact on operations" or "high cost of doing things manually." These are not actionable and will not be used. If exact data is unavailable, estimate with a range and state the assumption (e.g. "~$200K-$400K/year assuming a 200-person team spending 2 hours/day on manual reconciliation").
 
 Rules:
 - Each segment must trace back to one or more target markets

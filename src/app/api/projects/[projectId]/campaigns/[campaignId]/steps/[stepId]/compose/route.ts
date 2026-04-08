@@ -215,7 +215,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedICP.decisionCriteria?.length)
         parts.push(`Decision criteria: ${selectedICP.decisionCriteria.join(", ")}`);
       if (selectedICP.lossReasons?.length)
-        parts.push(`Common loss reasons: ${selectedICP.lossReasons.join(", ")}`);
+        parts.push(`Common objections to pre-empt: ${selectedICP.lossReasons.join(", ")}`);
       parts.push("");
     }
 

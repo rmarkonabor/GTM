@@ -283,8 +283,9 @@ function StepCard({
 
   function handleTypeChange(newType: "email" | "linkedin") {
     if (newType === step.type) return;
-    // Trim to single variant when switching to LinkedIn
     if (newType === "linkedin" && step.variants.length > 1) {
+      // Warn before silently discarding extra variants
+      toast.warning("Switched to LinkedIn. Extra variants removed — LinkedIn steps support one message only.");
       onUpdateVariants([step.variants[0]]);
       setActiveIdx(0);
     }
@@ -535,6 +536,11 @@ function StepCard({
               onChange={(v) => setSelPersonaIdx(v !== null ? Number(v) : null)}
             />
           </div>
+          {(strategy?.icps?.length ?? 0) === 0 && (
+            <p className="text-[10px] text-slate-600 -mt-1">
+              ICP and Persona selectors populate after the ICP step runs in your GTM strategy.
+            </p>
+          )}
 
           {/* Proof toggle — email only */}
           {step.type !== "linkedin" && (
@@ -555,13 +561,17 @@ function StepCard({
           )}
 
           {/* LinkedIn char limit hint */}
-          {step.type === "linkedin" && (
-            <p className="text-[10px] text-slate-500">
-              {step.seq === 1
-                ? "Connection note — max 300 characters."
-                : "Follow-up message — max 1,000 characters."}
-            </p>
-          )}
+          {step.type === "linkedin" && (() => {
+            const liLimit = step.seq === 1 ? 300 : 1000;
+            const msgLen = currentVariant.body.length;
+            const over = msgLen > liLimit;
+            return (
+              <p className={cn("text-[10px]", over ? "text-red-400 font-medium" : "text-slate-500")}>
+                {step.seq === 1 ? "Connection note" : "Follow-up message"} — {msgLen}/{liLimit} chars
+                {over && " · over limit, shorten before pushing"}
+              </p>
+            );
+          })()}
 
           <textarea
             placeholder={
