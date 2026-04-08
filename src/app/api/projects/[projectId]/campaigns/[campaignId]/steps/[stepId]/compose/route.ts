@@ -192,11 +192,30 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     parts.push(
-      'Write a personalized cold email. Use {{FirstName}} and {{CompanyName}} as merge tag placeholders.',
-      "Subject line: punchy, under 10 words, specific to their pain or goal.",
-      "Body: under 150 words, focus on their problem not our features, single clear CTA.",
-      "Do not use generic filler phrases like 'I hope this finds you well'.",
-      "Return ONLY the subject and body — no preamble."
+      `Write a personalized cold email using this structure:
+
+1. Hook
+Start with a relevant question tied to the prospect's buyers, goals, or current challenge. It should feel specific and make them pause.
+
+2. Relevance
+Briefly explain why you are reaching out and why this is relevant to their role or company right now.
+
+3. Proof
+Add one short credibility point such as a relevant customer, audience, result, market signal, or concrete detail that supports the outreach.
+
+4. Soft CTA
+End with a low pressure and clear call to action. Keep it simple and easy to answer.
+
+Rules:
+Use {{FirstName}} and {{CompanyName}} as merge tag placeholders.
+Write a punchy subject line under 10 words that is specific to their pain point, goal, or buyer access challenge.
+Keep the body under 150 words.
+Focus on their problem, priorities, or goals, not our features.
+Make it sound casual, direct, and human.
+Avoid generic filler like I hope this finds you well.
+Avoid sounding overly polished, salesy, or AI written.
+Use simple language.
+Only include one clear CTA.`
     );
 
     const systemPrompt = parts.join("\n");
