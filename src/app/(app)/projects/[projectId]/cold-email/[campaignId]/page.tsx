@@ -11,6 +11,7 @@ import {
   DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import { resolveSpintax, countSpintaxBlocks, hasUnclosedBlocks } from "@/lib/email/spintax";
+import { formatCost, formatTokens } from "@/lib/ai/pricing";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -140,6 +141,8 @@ function StepCard({
   const [composePrompt, setComposePrompt] = useState("");
   const [composing, setComposing] = useState(false);
   const [spintaxing, setSpintaxing] = useState(false);
+  const [composeUsage, setComposeUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
+  const [spintaxUsage, setSpintaxUsage] = useState<{ inputTokens: number; outputTokens: number; estimatedCostUsd: number; model: string } | null>(null);
 
   async function handleCompose() {
     setComposing(true);
@@ -168,6 +171,7 @@ function StepCard({
         i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
       );
       onUpdateVariants(updated);
+      if (data.usage) setComposeUsage(data.usage);
       toast.success("Email copy generated.");
     } catch {
       toast.error("Network error generating copy.");
@@ -201,6 +205,7 @@ function StepCard({
         i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
       );
       onUpdateVariants(updated);
+      if (data.usage) setSpintaxUsage(data.usage);
       toast.success("Spintax added.");
     } catch {
       toast.error("Network error generating spintax.");
@@ -259,6 +264,11 @@ function StepCard({
         >
           {spintaxing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />}
         </button>
+        {spintaxUsage && !spintaxing && (
+          <span className="text-[10px] text-slate-600 tabular-nums" title={`${spintaxUsage.inputTokens + spintaxUsage.outputTokens} tokens · ${spintaxUsage.model}`}>
+            {formatCost(spintaxUsage.estimatedCostUsd)}
+          </span>
+        )}
         <button
           onClick={() => setComposerOpen((p) => !p)}
           title="AI Compose"
@@ -368,6 +378,13 @@ function StepCard({
             )}
             {composing ? "Generating…" : "Generate Copy"}
           </Button>
+          {composeUsage && !composing && (
+            <p className="text-[10px] text-slate-500 text-center tabular-nums">
+              {formatTokens(composeUsage.inputTokens + composeUsage.outputTokens)} tokens
+              {" · "}{formatCost(composeUsage.estimatedCostUsd)}
+              {" · "}<span className="text-slate-600">{composeUsage.model}</span>
+            </p>
+          )}
         </div>
       )}
 

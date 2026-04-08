@@ -9,6 +9,8 @@ import { errorResponse } from "@/lib/errors/handlers";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference } from "@/types/gtm";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { generateObject } from "ai";
 import { z } from "zod";
 
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
+    const modelId = getModelForTask(llmPreference.provider, "spintax-generate");
     const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "spintax-generate");
 
     const systemPrompt = `You are an expert cold email copywriter who uses spintax to create natural, high-volume outreach variations.
@@ -124,7 +127,7 @@ Rules:
 
 Return the subject and body with spintax blocks inserted. Do not change the meaning or structure. Do not add or remove sentences. Only inject variation blocks into existing phrasing.`;
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: z.object({
         subject: z.string().describe("Subject line with spintax blocks added"),
@@ -133,7 +136,19 @@ Return the subject and body with spintax blocks inserted. Do not change the mean
       prompt: systemPrompt,
     });
 
-    return NextResponse.json({ subject: object.subject, body: object.body });
+    const inputTokens = usage.inputTokens ?? 0;
+    const outputTokens = usage.outputTokens ?? 0;
+    return NextResponse.json({
+      subject: object.subject,
+      body: object.body,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        estimatedCostUsd: calculateCost(modelId, inputTokens, outputTokens),
+        model: modelId,
+      },
+    });
   } catch (err) {
     return errorResponse(err);
   }

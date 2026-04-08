@@ -9,6 +9,8 @@ import { errorResponse } from "@/lib/errors/handlers";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference } from "@/types/gtm";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { generateObject } from "ai";
 import { z } from "zod";
 
@@ -101,6 +103,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
+    const modelId = getModelForTask(llmPreference.provider, "cold-email-compose");
     const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email-compose");
 
     // Extract strategy data from step outputs
@@ -220,7 +223,7 @@ Only include one clear CTA.`
 
     const systemPrompt = parts.join("\n");
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: z.object({
         subject: z.string().describe("The email subject line"),
@@ -229,7 +232,19 @@ Only include one clear CTA.`
       prompt: systemPrompt,
     });
 
-    return NextResponse.json({ subject: object.subject, body: object.body });
+    const inputTokens = usage.inputTokens ?? 0;
+    const outputTokens = usage.outputTokens ?? 0;
+    return NextResponse.json({
+      subject: object.subject,
+      body: object.body,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        estimatedCostUsd: calculateCost(modelId, inputTokens, outputTokens),
+        model: modelId,
+      },
+    });
   } catch (err) {
     return errorResponse(err);
   }
