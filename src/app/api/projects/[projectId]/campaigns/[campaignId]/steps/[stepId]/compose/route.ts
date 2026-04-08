@@ -92,7 +92,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const llmPreference = JSON.parse(llmRaw) as LLMPreference;
+    let llmPreference: LLMPreference;
+    try {
+      llmPreference = JSON.parse(llmRaw) as LLMPreference;
+    } catch {
+      return NextResponse.json(
+        { error: { code: "LLM_NOT_CONFIGURED", message: "Please configure your AI provider in Settings." } },
+        { status: 400 }
+      );
+    }
     const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email-compose");
 
     // Extract strategy data from step outputs
@@ -142,8 +150,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parts.push("TARGET INDUSTRY:");
       if (selectedIndustry.niche) parts.push(`Niche: ${selectedIndustry.niche}`);
       if (selectedIndustry.standardIndustry) parts.push(`Industry: ${selectedIndustry.standardIndustry}`);
-      if (selectedIndustry.painPoints) parts.push(`Pain points: ${selectedIndustry.painPoints}`);
-      if (selectedIndustry.whatClientOffers) parts.push(`What we offer: ${selectedIndustry.whatClientOffers}`);
+      if (selectedIndustry.painPoints?.length) parts.push(`Pain points: ${selectedIndustry.painPoints.join(", ")}`);
+      if (selectedIndustry.whatClientOffers?.length) parts.push(`What we offer: ${selectedIndustry.whatClientOffers.join(", ")}`);
       if (selectedIndustry.howTheyWorkTogether) parts.push(`Engagement: ${selectedIndustry.howTheyWorkTogether}`);
       parts.push("");
     }
@@ -152,8 +160,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parts.push("TARGET MARKET:");
       if (selectedMarket.name) parts.push(`Name: ${selectedMarket.name}`);
       if (selectedMarket.priorityScore != null) parts.push(`Priority score: ${selectedMarket.priorityScore}/10`);
-      if (selectedMarket.urgentProblems) parts.push(`Urgent problems: ${selectedMarket.urgentProblems}`);
-      if (selectedMarket.macroTrends) parts.push(`Macro trends: ${selectedMarket.macroTrends}`);
+      if (selectedMarket.urgentProblems?.length) parts.push(`Urgent problems: ${selectedMarket.urgentProblems.join(", ")}`);
+      if (selectedMarket.macroTrends?.length) parts.push(`Macro trends: ${selectedMarket.macroTrends.join(", ")}`);
       parts.push("");
     }
 
@@ -165,9 +173,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       const pos = selectedSegment.positioning;
       if (pos) {
         if (pos.messagingHook) parts.push(`Messaging hook: ${pos.messagingHook}`);
-        if (pos.keyPainPoints) parts.push(`Key pain points: ${pos.keyPainPoints}`);
+        if (pos.keyPainPoints?.length) parts.push(`Key pain points: ${pos.keyPainPoints.join(", ")}`);
         if (pos.ourAngle) parts.push(`Our angle: ${pos.ourAngle}`);
-        if (pos.proofPoints) parts.push(`Proof points: ${pos.proofPoints}`);
+        if (pos.proofPoints?.length) parts.push(`Proof points: ${pos.proofPoints.join(", ")}`);
         if (pos.ctaApproach) parts.push(`CTA: ${pos.ctaApproach}`);
       }
       parts.push("");
