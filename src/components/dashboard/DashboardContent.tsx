@@ -399,10 +399,11 @@ function StrategyTab({
 // ─── Execution Tab ──────────────────────────────────────────────────────────
 
 interface StoredCampaign {
-  campaignId: number;
+  id: string;
   name: string;
-  targetMarketName: string;
-  pushedAt: string;
+  smartleadId: number | null;
+  pushedAt: string | null;
+  steps: unknown[];
   stats: {
     sent: number; opened: number; clicked: number; replied: number; bounced: number;
     openRate: number; clickRate: number; replyRate: number; status: string;
@@ -429,12 +430,19 @@ function StatPill({ label, value, sub }: { label: string; value: string | number
 function CampaignCard({ campaign }: { campaign: StoredCampaign }) {
   const s = campaign.stats;
   const statusKey = s?.status?.toUpperCase() ?? "DRAFTED";
+  const stepCount = campaign.steps?.length ?? 0;
+  const pushedDate = campaign.pushedAt
+    ? new Date(campaign.pushedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : null;
   return (
     <div className="bg-slate-900 border border-white/10 rounded-xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-white text-sm truncate">{campaign.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{campaign.targetMarketName} · {new Date(campaign.pushedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {stepCount} step{stepCount !== 1 ? "s" : ""}
+            {pushedDate && ` · Pushed ${pushedDate}`}
+          </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {s && (
@@ -470,7 +478,7 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
     try {
       const res = await fetch(`/api/projects/${project.id}/campaigns`);
       const data = await res.json();
-      if (data.campaigns) setCampaigns(data.campaigns);
+      if (data.campaigns) setCampaigns(data.campaigns.filter((c: StoredCampaign) => c.smartleadId !== null));
     } catch { /* ignore */ } finally {
       setLoading(false);
       setRefreshing(false);
@@ -524,7 +532,7 @@ function ExecutionTab({ project }: { project: DashboardProject }) {
       ) : (
         <div className="space-y-3">
           {campaigns.slice().reverse().map((c) => (
-            <CampaignCard key={c.campaignId} campaign={c} />
+            <CampaignCard key={c.id} campaign={c} />
           ))}
         </div>
       )}

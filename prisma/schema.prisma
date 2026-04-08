@@ -82,9 +82,10 @@ model Project {
   status         ProjectStatus @default(RESEARCHING)
   // Unique token for public sharing — null means not shared
   shareToken       String?       @unique
-  // JSON array: [{ campaignId, name, targetMarketName, pushedAt }]
+  // JSON array: [{ campaignId, name, targetMarketName, pushedAt }] — legacy, replaced by Campaign model
   smartleadCampaigns Json?
   steps              ProjectStep[]
+  campaigns          Campaign[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -140,6 +141,40 @@ enum StepStatus {
   AWAITING_APPROVAL
   COMPLETE
   ERROR
+}
+
+// ─────────────────────────────────────────────
+// Cold Email Campaigns
+// ─────────────────────────────────────────────
+
+model Campaign {
+  id          String         @id @default(cuid())
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  steps       CampaignStep[]
+  // Set when the campaign has been pushed to Smartlead
+  smartleadId Int?
+  pushedAt    DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([projectId])
+}
+
+model CampaignStep {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  seq        Int
+  waitDays   Int      @default(0)
+  // JSON array: [{ id: string, subject: string, body: string }]
+  // First entry is Variant A; additional entries are B/C for A/B testing.
+  variants   Json     @default("[]")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([campaignId, seq])
+  @@index([campaignId])
 }
 
 model ProjectStepVersion {

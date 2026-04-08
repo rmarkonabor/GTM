@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
   Search, Target, Building2, Users, BarChart3, LayoutDashboard,
   Swords, MessageSquare, CheckCircle2, Loader2, Circle, AlertCircle,
-  ChevronLeft, Clock
+  ChevronLeft, Clock, Mail, Plus, Send
 } from "lucide-react";
 
 interface ProjectStep {
@@ -61,6 +62,100 @@ function StepLink({ href, isActive, icon: Icon, label, status }: {
   );
 }
 
+interface Campaign {
+  id: string;
+  name: string;
+  smartleadId: number | null;
+  pushedAt: string | null;
+}
+
+function CampaignSection({ projectId, pathname }: { projectId: string; pathname: string }) {
+  const router = useRouter();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/campaigns`);
+      if (res.ok) {
+        const data = await res.json();
+        setCampaigns(data.campaigns ?? []);
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns, pathname]);
+
+  async function handleCreate() {
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/campaigns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Untitled Campaign" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await fetchCampaigns();
+        router.push(`/projects/${projectId}/cold-email/${data.campaign.id}`);
+      }
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between px-3 pt-2 pb-1.5">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Cold Email</p>
+        <button
+          onClick={handleCreate}
+          disabled={creating}
+          className="text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
+          title="New Campaign"
+        >
+          {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+      {campaigns.length === 0 ? (
+        <button
+          onClick={handleCreate}
+          disabled={creating}
+          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50"
+        >
+          <Mail className="h-3.5 w-3.5 shrink-0" />
+          <span>New campaign…</span>
+        </button>
+      ) : (
+        campaigns.map((c) => {
+          const href = `/projects/${projectId}/cold-email/${c.id}`;
+          const isActive = pathname.startsWith(href);
+          return (
+            <Link key={c.id} href={href}>
+              <div
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  isActive
+                    ? "bg-violet-600/20 text-violet-300"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">{c.name}</span>
+                {c.pushedAt && <Send className="h-3 w-3 text-green-400 shrink-0" />}
+              </div>
+            </Link>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 export function ProjectStepNav({ project }: { project: Project }) {
   const pathname = usePathname();
   const stepMap = Object.fromEntries(project.steps.map((s) => [s.stepName, s.status]));
@@ -103,6 +198,11 @@ export function ProjectStepNav({ project }: { project: Project }) {
             status={stepMap[step.key] ?? "PENDING"}
           />
         ))}
+
+        {/* Cold Email section */}
+        <div className="border-t border-white/5 mt-2">
+          <CampaignSection projectId={project.id} pathname={pathname} />
+        </div>
 
       </nav>
     </aside>
