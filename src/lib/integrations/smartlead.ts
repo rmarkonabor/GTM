@@ -45,6 +45,15 @@ export interface StepVariant {
   body: string;
 }
 
+function toEmailHtml(text: string): string {
+  // Convert plain-text line breaks to HTML so Smartlead renders spacing correctly.
+  // Double newlines → paragraph break; single newlines → <br>.
+  return text
+    .split(/\n{2,}/)
+    .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+    .join("\n");
+}
+
 export async function addSequenceStep(
   apiKey: string,
   campaignId: number,
@@ -58,13 +67,13 @@ export async function addSequenceStep(
     seq_number: seq,
     seq_delay_details: { delay_in_days: step.waitDays },
     subject: primary.subject,
-    email_body: primary.body,
+    email_body: toEmailHtml(primary.body),
   };
 
   if (rest.length > 0) {
     seqObj["seq_variants"] = rest.map((v) => ({
       subject: v.subject,
-      email_body: v.body,
+      email_body: toEmailHtml(v.body),
     }));
   }
 
