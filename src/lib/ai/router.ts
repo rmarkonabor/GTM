@@ -13,7 +13,8 @@ export type TaskName =
   | "format-for-export"
   | "step-summary"
   | "error-explanation"
-  | "filter-translation";
+  | "filter-translation"
+  | "cold-email-compose";
 
 const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "research-enrichment": "COMPLEX",
@@ -29,6 +30,7 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "step-summary": "SIMPLE",
   "error-explanation": "SIMPLE",
   "filter-translation": "SIMPLE",
+  "cold-email-compose": "MEDIUM",
 };
 
 const MODEL_TIER: Record<LLMProvider, Record<TaskComplexity, string>> = {

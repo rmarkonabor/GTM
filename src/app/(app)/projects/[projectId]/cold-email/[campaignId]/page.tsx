@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +34,47 @@ interface Campaign {
   smartleadId: number | null;
   pushedAt: string | null;
   steps: CampaignStep[];
+}
+
+interface StrategyIndustry { idx: number; label: string; data: Record<string, unknown>; }
+interface StrategyMarket   { id: string;  name: string;  data: Record<string, unknown>; }
+interface StrategySegment  { id: string;  name: string;  data: Record<string, unknown>; }
+interface StrategyData {
+  industries: StrategyIndustry[];
+  markets:    StrategyMarket[];
+  segments:   StrategySegment[];
+}
+
+// ─── Strategy select helper ───────────────────────────────────────────────────
+
+function StrategySelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { id: string | number; name: string }[];
+  value: string | number | null;
+  onChange: (v: string | number | null) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] text-slate-500">{label}</p>
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full bg-slate-800 border border-white/10 rounded text-xs text-slate-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-500"
+      >
+        <option value="">— none —</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 }
 
 // ─── Spintax badge ────────────────────────────────────────────────────────────
@@ -72,18 +113,67 @@ function WaitSelector({ value, onChange, disabled }: { value: number; onChange: 
 function StepCard({
   step,
   isOnly,
+  totalSteps,
+  projectId,
+  campaignId,
+  strategy,
   onDelete,
   onUpdateVariants,
   onUpdateWaitDays,
 }: {
   step: CampaignStep;
   isOnly: boolean;
+  totalSteps: number;
+  projectId: string;
+  campaignId: string;
+  strategy: StrategyData | null;
   onDelete: () => void;
   onUpdateVariants: (variants: StepVariant[]) => void;
   onUpdateWaitDays: (days: number) => void;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [preview, setPreview] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [selIndustry, setSelIndustry] = useState<number | null>(null);
+  const [selMarket, setSelMarket] = useState<string | null>(null);
+  const [selSegment, setSelSegment] = useState<string | null>(null);
+  const [composePrompt, setComposePrompt] = useState("");
+  const [composing, setComposing] = useState(false);
+
+  async function handleCompose() {
+    setComposing(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/campaigns/${campaignId}/steps/${step.id}/compose`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            industryIdx: selIndustry,
+            marketId: selMarket,
+            segmentId: selSegment,
+            prompt: composePrompt,
+            seq: step.seq,
+            totalSteps,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to generate copy.");
+        return;
+      }
+      const updated = step.variants.map((v, i) =>
+        i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
+      );
+      onUpdateVariants(updated);
+      toast.success("Email copy generated.");
+    } catch {
+      toast.error("Network error generating copy.");
+    } finally {
+      setComposing(false);
+    }
+  }
 
   const currentVariant = step.variants[activeIdx] ?? step.variants[0];
   if (!currentVariant) return null;
@@ -127,6 +217,16 @@ function StepCard({
           disabled={step.seq === 1}
         />
         <div className="flex-1" />
+        <button
+          onClick={() => setComposerOpen((p) => !p)}
+          title="AI Compose"
+          className={cn(
+            "transition-colors",
+            composerOpen ? "text-violet-400" : "text-slate-500 hover:text-violet-400"
+          )}
+        >
+          <Wand2 className="h-4 w-4" />
+        </button>
         <button
           onClick={() => setPreview((p) => !p)}
           className="text-slate-500 hover:text-slate-300 transition-colors"
@@ -181,6 +281,53 @@ function StepCard({
           </button>
         )}
       </div>
+
+      {/* AI Composer panel */}
+      {composerOpen && (
+        <div className="mx-4 mb-3 mt-2 p-3 rounded-lg bg-slate-800/60 border border-violet-500/20 space-y-3">
+          <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest">AI Composer</p>
+          <div className="grid grid-cols-3 gap-2">
+            <StrategySelect
+              label="Industry"
+              options={(strategy?.industries ?? []).map((i) => ({ id: i.idx, name: i.label }))}
+              value={selIndustry}
+              onChange={(v) => setSelIndustry(v !== null ? Number(v) : null)}
+            />
+            <StrategySelect
+              label="Target Market"
+              options={(strategy?.markets ?? []).map((m) => ({ id: m.id, name: m.name }))}
+              value={selMarket}
+              onChange={(v) => setSelMarket(v as string | null)}
+            />
+            <StrategySelect
+              label="Segment"
+              options={(strategy?.segments ?? []).map((s) => ({ id: s.id, name: s.name }))}
+              value={selSegment}
+              onChange={(v) => setSelSegment(v as string | null)}
+            />
+          </div>
+          <textarea
+            placeholder="Additional instructions (tone, length, specific points…)"
+            value={composePrompt}
+            onChange={(e) => setComposePrompt(e.target.value)}
+            rows={2}
+            className="w-full text-xs bg-slate-900/50 border border-white/10 rounded px-2 py-1.5 text-white resize-none focus:outline-none focus:ring-1 focus:ring-violet-500"
+          />
+          <Button
+            size="sm"
+            onClick={handleCompose}
+            disabled={composing}
+            className="gap-2 w-full"
+          >
+            {composing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="h-3.5 w-3.5" />
+            )}
+            {composing ? "Generating…" : "Generate Copy"}
+          </Button>
+        </div>
+      )}
 
       {/* Variant editor */}
       {!preview ? (
@@ -246,6 +393,7 @@ export default function CampaignEditorPage({
   const router = useRouter();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
+  const [strategy, setStrategy] = useState<StrategyData | null>(null);
   const [addingStep, setAddingStep] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -274,6 +422,46 @@ export default function CampaignEditorPage({
   useEffect(() => {
     fetchCampaign();
   }, [fetchCampaign]);
+
+  // Fetch GTM strategy data for AI composer dropdowns
+  useEffect(() => {
+    fetch(`/api/projects/${projectId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data?.project?.steps) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const steps: any[] = data.project.steps;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ip = steps.find((s: any) => s.stepName === "INDUSTRY_PRIORITY");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tm = steps.find((s: any) => s.stepName === "TARGET_MARKETS");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sg = steps.find((s: any) => s.stepName === "SEGMENTATION");
+        setStrategy({
+          industries: (ip?.output?.industries ?? []).map(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (ind: any, i: number) => ({
+              idx: i,
+              label: [ind.niche, ind.standardIndustry].filter(Boolean).join(" / ") || `Industry ${i + 1}`,
+              data: ind,
+            })
+          ),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          markets: (tm?.output?.markets ?? []).map((m: any) => ({
+            id: m.id ?? m.name,
+            name: m.name,
+            data: m,
+          })),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          segments: (sg?.output?.segments ?? []).map((s: any) => ({
+            id: s.id ?? s.name,
+            name: s.estimatedPriority ? `${s.name} (${s.estimatedPriority})` : s.name,
+            data: s,
+          })),
+        });
+      })
+      .catch(() => {});
+  }, [projectId]);
 
   // ── Rename campaign ──────────────────────────────────────────────────────
 
@@ -449,6 +637,10 @@ export default function CampaignEditorPage({
             <StepCard
               step={step}
               isOnly={campaign.steps.length === 1}
+              totalSteps={campaign.steps.length}
+              projectId={projectId}
+              campaignId={campaignId}
+              strategy={strategy}
               onDelete={() => handleDeleteStep(step.id)}
               onUpdateVariants={(variants) => handleUpdateVariants(step.id, variants)}
               onUpdateWaitDays={(days) => handleUpdateWaitDays(step.id, days)}
