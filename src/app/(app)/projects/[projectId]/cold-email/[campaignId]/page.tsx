@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2, Wand2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, EyeOff, Send, CheckCircle2, Wand2, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -139,6 +139,7 @@ function StepCard({
   const [selSegment, setSelSegment] = useState<string | null>(null);
   const [composePrompt, setComposePrompt] = useState("");
   const [composing, setComposing] = useState(false);
+  const [spintaxing, setSpintaxing] = useState(false);
 
   async function handleCompose() {
     setComposing(true);
@@ -172,6 +173,39 @@ function StepCard({
       toast.error("Network error generating copy.");
     } finally {
       setComposing(false);
+    }
+  }
+
+  async function handleSpintax() {
+    const variant = step.variants[activeIdx] ?? step.variants[0];
+    if (!variant?.subject.trim() && !variant?.body.trim()) {
+      toast.error("Write some copy first before adding spintax.");
+      return;
+    }
+    setSpintaxing(true);
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/campaigns/${campaignId}/steps/${step.id}/spintax`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject: variant.subject, body: variant.body }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error?.message ?? "Failed to generate spintax.");
+        return;
+      }
+      const updated = step.variants.map((v, i) =>
+        i === activeIdx ? { ...v, subject: data.subject, body: data.body } : v
+      );
+      onUpdateVariants(updated);
+      toast.success("Spintax added.");
+    } catch {
+      toast.error("Network error generating spintax.");
+    } finally {
+      setSpintaxing(false);
     }
   }
 
@@ -217,6 +251,14 @@ function StepCard({
           disabled={step.seq === 1}
         />
         <div className="flex-1" />
+        <button
+          onClick={handleSpintax}
+          disabled={spintaxing}
+          title="Generate spintax variations"
+          className="text-slate-500 hover:text-violet-400 transition-colors disabled:opacity-40"
+        >
+          {spintaxing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shuffle className="h-4 w-4" />}
+        </button>
         <button
           onClick={() => setComposerOpen((p) => !p)}
           title="AI Compose"
