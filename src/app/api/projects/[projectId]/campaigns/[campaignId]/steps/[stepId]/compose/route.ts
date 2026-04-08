@@ -220,7 +220,8 @@ Make it sound casual, direct, and human.
 Avoid generic filler like I hope this finds you well.
 Avoid sounding overly polished, salesy, or AI written.
 Use simple language.
-Only include one clear CTA.`
+Only include one clear CTA.${!includeProof ? `
+Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly 3 parts: Hook, Relevance, and Soft CTA only.` : ""}`
     );
 
     const systemPrompt = parts.join("\n");
