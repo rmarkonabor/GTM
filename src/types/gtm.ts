@@ -86,6 +86,12 @@ export interface ICPDefinition {
   standardIndustry: string;  // Apollo/LinkedIn-compatible: "Computer Software", "Financial Services"
   niche: string;             // Sub-segment: "HR Tech", "Legal Tech", "Fintech for SMBs"
   keywords: string[];        // Targeting terms: ["HRIS", "payroll", "workforce management"]
+  // How the buying decision is made in this ICP
+  engagementModel?: "champion" | "champion-committee" | "consensus" | "executive-top-down";
+  // What the buying org optimises for when evaluating solutions
+  decisionCriteria?: string[];
+  // Why prospects in this ICP choose a competitor or do nothing
+  lossReasons?: string[];
   firmographics: Firmographics;
   buyerPersonas: BuyerPersona[];
 }
@@ -105,6 +111,10 @@ export interface TargetMarket {
   importantProblems: string[];
   macroTrends: string[];
   whyRightMarket: string;
+  // What makes RIGHT NOW the moment to target this market (specific trigger/shift)
+  whyNow?: string;
+  // Our specific competitive edge in this market vs alternatives
+  whyUs?: string;
   priorityScore: number; // 1-10
 }
 
@@ -131,6 +141,10 @@ export interface Segment {
   industries: string[];
   estimatedPriority: "tier-1" | "tier-2" | "tier-3";
   rationale: string;
+  // How deals in this segment are typically initiated and closed
+  buyingMotion?: "bottom-up" | "top-down" | "rfp-driven" | "land-expand";
+  // Plain-language estimate of the business impact of the problem (e.g. "~$300K/year in manual costs")
+  painMultiplier?: string;
   positioning: SegmentPositioning;
 }
 
@@ -151,6 +165,10 @@ export interface Competitor {
   whereClientWins: string[];
   targetSegment: string; // which segment/industry they compete in
   pricingModel?: string;
+  // How seriously this competitor should be tracked in deals
+  threatLevel?: "high" | "medium" | "low";
+  // Whether they are growing, holding, or losing share in this market
+  edgeTrend?: "gaining" | "holding" | "losing";
 }
 
 export interface CompetitiveAnalysisOutput {

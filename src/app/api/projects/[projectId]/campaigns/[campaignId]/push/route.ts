@@ -57,11 +57,32 @@ export async function POST(
       slCampaignId = created.id;
     }
 
+    // Validate LinkedIn character limits before pushing anything
+    for (const step of campaign.steps) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stepType = (step as any).type as string | undefined;
+      if (stepType === "linkedin") {
+        const variants = (step.variants as unknown as StepVariant[]) ?? [];
+        const msg = variants[0]?.body ?? "";
+        const limit = step.seq === 1 ? 300 : 1000;
+        if (msg.length > limit) {
+          return NextResponse.json({
+            error: {
+              code: "VALIDATION",
+              message: `Step ${step.seq} LinkedIn message exceeds the ${limit}-character limit (${msg.length} chars). Shorten it before pushing.`,
+            },
+          }, { status: 400 });
+        }
+      }
+    }
+
     // Push all steps to Smartlead (upserts by seq_number)
     for (const step of campaign.steps) {
       const variants = (step.variants as unknown as StepVariant[]) ?? [];
       if (variants.length === 0) continue;
-      await addSequenceStep(apiKey, slCampaignId, { waitDays: step.waitDays, variants }, step.seq);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stepType = (step as any).type as string | undefined;
+      await addSequenceStep(apiKey, slCampaignId, { type: stepType, waitDays: step.waitDays, variants }, step.seq);
     }
 
     // Persist smartleadId + pushedAt

@@ -23,6 +23,9 @@ const schema = z.object({
       standardIndustry: z.string(),
       niche: z.string(),
       keywords: z.array(z.string()),
+      engagementModel: z.enum(["champion", "champion-committee", "consensus", "executive-top-down"]),
+      decisionCriteria: z.array(z.string()),
+      lossReasons: z.array(z.string()),
       firmographics: firmographicsSchema,
       buyerPersonas: z.array(
         z.object({

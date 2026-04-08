@@ -33,9 +33,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     const body = await req.json();
-    const data: { waitDays?: number; variants?: Prisma.InputJsonValue } = {};
+    const data: { waitDays?: number; variants?: Prisma.InputJsonValue; type?: string } = {};
     if (body.waitDays !== undefined) data.waitDays = Number(body.waitDays);
     if (body.variants !== undefined) data.variants = body.variants;
+    if (body.type === "email" || body.type === "linkedin") data.type = body.type;
 
     const updated = await prisma.campaignStep.update({
       where: { id: stepId },

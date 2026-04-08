@@ -14,7 +14,9 @@ export type TaskName =
   | "step-summary"
   | "error-explanation"
   | "filter-translation"
-  | "cold-email-compose";
+  | "cold-email-compose"
+  | "linkedin-compose"
+  | "spintax-generate";
 
 const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "research-enrichment": "COMPLEX",
@@ -31,6 +33,8 @@ const TASK_COMPLEXITY: Record<TaskName, TaskComplexity> = {
   "error-explanation": "SIMPLE",
   "filter-translation": "SIMPLE",
   "cold-email-compose": "MEDIUM",
+  "linkedin-compose": "MEDIUM",
+  "spintax-generate": "MEDIUM",
 };
 
 const MODEL_TIER: Record<LLMProvider, Record<TaskComplexity, string>> = {

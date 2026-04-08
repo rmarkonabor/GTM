@@ -44,6 +44,20 @@ CRITICAL — Each ICP must include:
      Construction → ["construction software", "project management software", "field service management", "construction technology", "building information modeling"]
      Marketing Agency → ["digital marketing", "SEO services", "paid media", "content marketing", "marketing services", "creative agency"]
 
+4. engagementModel: How the buying decision is typically made in this ICP.
+   - "champion": One person champions and decides — outreach should activate and arm this individual
+   - "champion-committee": Champion drives but needs committee sign-off — help the champion build internal consensus
+   - "consensus": Multiple stakeholders must agree with no clear champion — multi-threaded outreach needed
+   - "executive-top-down": C-suite or VP initiates and deploys — go directly to the decision maker
+
+5. decisionCriteria: 3–5 things the buying org optimises for when evaluating a solution.
+   Examples: "speed of implementation", "proven ROI before committing", "ease of use for non-technical users",
+   "security and compliance", "integration with existing tools", "vendor reliability", "price sensitivity"
+
+6. lossReasons: 3–5 reasons prospects in this ICP choose a competitor or do nothing.
+   Examples: "incumbent vendor with multi-year contract", "internal build preference", "no dedicated budget owner",
+   "decision deferred due to competing priorities", "unclear ROI for the budget owner"
+
 For each ICP also define:
 - Firmographics: Apollo.io/ZoomInfo-compatible company-level filters shaped by the target markets
 - apolloKeywordTags: 5–8 lowercase tags that Apollo indexes as company tags for this niche (what companies DO or SELL, not company names)
@@ -56,6 +70,9 @@ Return JSON:
       "standardIndustry": "Computer Software",
       "niche": "HR Tech",
       "keywords": ["HR software", "payroll software", "workforce management", "talent management", "employee engagement", "performance management", "HR technology"],
+      "engagementModel": "champion-committee",
+      "decisionCriteria": ["speed of implementation", "proven ROI", "integration with existing HRIS", "ease of adoption for HR admins"],
+      "lossReasons": ["incumbent HRIS vendor with long contract", "no dedicated budget for point solutions", "competing IT priorities", "internal preference to configure existing tools"],
       "firmographics": {
         "companySize": ["51,100", "101,200", "201,500"],
         "revenue": ["$5M-$50M"],
@@ -88,5 +105,6 @@ Rules:
 - Apollo seniority values: "owner", "founder", "c_suite", "partner", "vp", "head", "director", "manager", "senior", "entry"
 - companySize must use Apollo ranges: "1,10" | "11,20" | "21,50" | "51,100" | "101,200" | "201,500" | "501,1000" | "1001,2000" | "2001,5000" | "5001,10000" | "10001,"
 - Buyer persona goals/challenges MUST reference the target market's urgent and important problems
+- decisionCriteria and lossReasons must be specific to this ICP — not generic sales platitudes
 - Return ONLY JSON, no markdown.`;
 }

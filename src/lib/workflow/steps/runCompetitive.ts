@@ -16,10 +16,12 @@ const competitorSchema = z.object({
   whereClientWins: z.array(z.string()),
   targetSegment: z.string(),
   pricingModel: z.string().optional(),
+  threatLevel: z.enum(["high", "medium", "low"]),
+  edgeTrend: z.enum(["gaining", "holding", "losing"]),
 });
 
 const schema = z.object({
-  competitors: z.array(competitorSchema),
+  competitors: z.array(competitorSchema).max(15),
   isIndustrySpecific: z.boolean(),
 });
 

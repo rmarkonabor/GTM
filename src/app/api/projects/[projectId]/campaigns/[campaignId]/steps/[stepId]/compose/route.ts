@@ -9,6 +9,8 @@ import { errorResponse } from "@/lib/errors/handlers";
 import { safeDecrypt } from "@/lib/crypto";
 import { LLMPreference } from "@/types/gtm";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { getModelForTask } from "@/lib/ai/router";
+import { calculateCost } from "@/lib/ai/pricing";
 import { generateObject } from "ai";
 import { z } from "zod";
 
@@ -20,7 +22,13 @@ const bodySchema = z.object({
   industryIdx: z.number().nullable().optional(),
   marketId: z.string().nullable().optional(),
   segmentId: z.string().nullable().optional(),
+  icpIdx: z.number().nullable().optional(),
+  personaIdx: z.number().nullable().optional(),
   prompt: z.string().default(""),
+  includeProof: z.boolean().default(true),
+  refineMode: z.boolean().default(false),
+  existingSubject: z.string().optional(),
+  existingBody: z.string().optional(),
   seq: z.number().int().min(1),
   totalSteps: z.number().int().min(1),
 });
@@ -45,7 +53,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { industryIdx, marketId, segmentId, prompt, seq, totalSteps } = parsed.data;
+    const { industryIdx, marketId, segmentId, icpIdx, personaIdx, prompt, includeProof, refineMode, existingSubject, existingBody, seq, totalSteps } = parsed.data;
 
     // Verify ownership + load project and user in parallel
     const [project, user] = await Promise.all([
@@ -53,7 +61,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         where: { id: projectId, userId: session.user.id },
         include: {
           steps: {
-            where: { stepName: { in: ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "SEGMENTATION"] } },
+            where: { stepName: { in: ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "SEGMENTATION", "ICP"] } },
             select: { stepName: true, output: true },
           },
         },
@@ -101,6 +109,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
+    const modelId = getModelForTask(llmPreference.provider, "cold-email-compose");
     const model = getLanguageModel(llmPreference.provider, llmPreference.apiKey, "cold-email-compose");
 
     // Extract strategy data from step outputs
@@ -116,6 +125,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const tm: any = stepOutputs["TARGET_MARKETS"];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sg: any = stepOutputs["SEGMENTATION"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const icpOutput: any = stepOutputs["ICP"];
 
     const selectedIndustry =
       industryIdx != null ? ip?.industries?.[industryIdx] ?? null : null;
@@ -123,6 +134,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       marketId ? tm?.markets?.find((m: { id: string }) => m.id === marketId) ?? null : null;
     const selectedSegment =
       segmentId ? sg?.segments?.find((s: { id: string }) => s.id === segmentId) ?? null : null;
+    const selectedICP =
+      icpIdx != null ? icpOutput?.icps?.[icpIdx] ?? null : null;
+    const selectedPersona =
+      selectedICP && personaIdx != null ? selectedICP.buyerPersonas?.[personaIdx] ?? null : null;
 
     // Resolve company profile
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,6 +148,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // Build prompt
     const parts: string[] = [];
     parts.push("You are an expert B2B cold email copywriter.\n");
+
+    if (refineMode && (existingSubject || existingBody)) {
+      parts.push("EXISTING EMAIL TO REFINE:");
+      if (existingSubject) parts.push(`Subject: ${existingSubject}`);
+      if (existingBody) parts.push(`Body:\n${existingBody}`);
+      parts.push("");
+    }
 
     if (websiteUrl || companyProfile) {
       parts.push("COMPANY:");
@@ -162,6 +184,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedMarket.priorityScore != null) parts.push(`Priority score: ${selectedMarket.priorityScore}/10`);
       if (selectedMarket.urgentProblems?.length) parts.push(`Urgent problems: ${selectedMarket.urgentProblems.join(", ")}`);
       if (selectedMarket.macroTrends?.length) parts.push(`Macro trends: ${selectedMarket.macroTrends.join(", ")}`);
+      if (selectedMarket.whyNow) parts.push(`Why now: ${selectedMarket.whyNow}`);
+      if (selectedMarket.whyUs) parts.push(`Our edge: ${selectedMarket.whyUs}`);
       parts.push("");
     }
 
@@ -170,6 +194,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       if (selectedSegment.name) parts.push(`Name: ${selectedSegment.name}`);
       if (selectedSegment.estimatedPriority) parts.push(`Priority: ${selectedSegment.estimatedPriority}`);
       if (selectedSegment.sizeCategory) parts.push(`Size: ${selectedSegment.sizeCategory}`);
+      if (selectedSegment.buyingMotion) parts.push(`Buying motion: ${selectedSegment.buyingMotion}`);
+      if (selectedSegment.painMultiplier) parts.push(`Pain impact: ${selectedSegment.painMultiplier}`);
       const pos = selectedSegment.positioning;
       if (pos) {
         if (pos.messagingHook) parts.push(`Messaging hook: ${pos.messagingHook}`);
@@ -178,6 +204,30 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         if (pos.proofPoints?.length) parts.push(`Proof points: ${pos.proofPoints.join(", ")}`);
         if (pos.ctaApproach) parts.push(`CTA: ${pos.ctaApproach}`);
       }
+      parts.push("");
+    }
+
+    if (selectedICP) {
+      parts.push("RECIPIENT ICP:");
+      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
+      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
+      if (selectedICP.engagementModel) parts.push(`Buying model: ${selectedICP.engagementModel}`);
+      if (selectedICP.decisionCriteria?.length)
+        parts.push(`Decision criteria: ${selectedICP.decisionCriteria.join(", ")}`);
+      if (selectedICP.lossReasons?.length)
+        parts.push(`Common objections to pre-empt: ${selectedICP.lossReasons.join(", ")}`);
+      parts.push("");
+    }
+
+    if (selectedPersona) {
+      parts.push("RECIPIENT PERSONA:");
+      parts.push(`Title: ${selectedPersona.title}`);
+      if (selectedPersona.goals?.length)
+        parts.push(`Goals: ${selectedPersona.goals.join(", ")}`);
+      if (selectedPersona.challenges?.length)
+        parts.push(`Challenges: ${selectedPersona.challenges.join(", ")}`);
+      if (selectedPersona.triggerEvents?.length)
+        parts.push(`Trigger events: ${selectedPersona.triggerEvents.join(", ")}`);
       parts.push("");
     }
 
@@ -191,17 +241,67 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parts.push(`INSTRUCTIONS: ${prompt.trim()}\n`);
     }
 
+    const opening = refineMode
+      ? `Refine and improve the existing email above for true cold outreach to a cold lead who does not know us.
+Keep what works. Fix what doesn't. Do not start from scratch — preserve the intent and structure unless the instructions say otherwise.
+Apply the context and rules below to improve relevance, tone, and targeting.`
+      : `Write a personalized cold email for true cold outreach using {{FirstName}} and {{CompanyName}} as merge tag placeholders.
+
+The recipient does not know us. Write like this is a first touch from a stranger, so the email should feel light, respectful, and easy to reply to.`;
+
     parts.push(
-      'Write a personalized cold email. Use {{FirstName}} and {{CompanyName}} as merge tag placeholders.',
-      "Subject line: punchy, under 10 words, specific to their pain or goal.",
-      "Body: under 150 words, focus on their problem not our features, single clear CTA.",
-      "Do not use generic filler phrases like 'I hope this finds you well'.",
-      "Return ONLY the subject and body — no preamble."
+      `${opening}
+
+Use this structure:
+
+1. Hook
+Start with a simple and relevant question tied to the recipient's role, goals, or known challenges${selectedPersona ? ` — write specifically for a ${selectedPersona.title}` : ""}.
+Do not make strong assumptions.
+Do not sound confrontational.
+The first line should create interest, not pressure.
+
+2. Relevance
+Briefly explain why you reached out.
+Tie it to a likely challenge or priority for their role or company, but use soft language like "seems", "may", "might", or "thought this could be relevant".${selectedPersona?.challenges?.length ? `\nTheir known challenges include: ${selectedPersona.challenges.slice(0, 2).join(", ")}.` : ""}
+Do not act like you already know their internal situation unless that context is explicitly provided.
+${includeProof ? `
+3. Proof
+Include one short and believable proof point.
+This can be a relevant example, customer type, result, audience detail, or market pattern.
+Keep it light.
+Do not over explain.
+Do not stack multiple proof points.
+
+4. Soft CTA` : `
+3. Soft CTA`}
+End with one low friction question.
+The CTA should feel easy to answer, like:
+"Open to a quick look?"
+"Worth a quick chat?"
+"Want me to send a few details?"
+Avoid asking for a long meeting in the first email.
+
+Rules:
+Use {{FirstName}} and {{CompanyName}} exactly as placeholders.
+Write a punchy subject line under 10 words.
+Keep the body under 120 words.
+Make it casual, direct, and human.
+The email should feel like it is opening a conversation, not trying to close one.
+Focus on their problem or priority more than our offer.
+Do not use filler phrases like "I hope this finds you well."
+Do not use aggressive or overly confident language.
+Do not use pressure tactics.
+Do not sound like a pitch deck.
+Do not mention features too early.
+Do not use phrases like "replace headcount", "book a 30 minute call", "ARR momentum", or anything that feels too salesy for a first touch.
+Do not reference funding, hiring, layoffs, or recent news unless that context is explicitly provided and clearly relevant.
+Only include one CTA.${!includeProof ? `
+Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly 3 parts: Hook, Relevance, and Soft CTA only.` : ""}`
     );
 
     const systemPrompt = parts.join("\n");
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: z.object({
         subject: z.string().describe("The email subject line"),
@@ -210,7 +310,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       prompt: systemPrompt,
     });
 
-    return NextResponse.json({ subject: object.subject, body: object.body });
+    const inputTokens = usage.inputTokens ?? 0;
+    const outputTokens = usage.outputTokens ?? 0;
+    return NextResponse.json({
+      subject: object.subject,
+      body: object.body,
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        estimatedCostUsd: calculateCost(modelId, inputTokens, outputTokens),
+        model: modelId,
+      },
+    });
   } catch (err) {
     return errorResponse(err);
   }

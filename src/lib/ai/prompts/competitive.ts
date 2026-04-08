@@ -26,15 +26,27 @@ Return JSON:
       "whereTheyWin": ["their strength vs. the client"],
       "whereClientWins": ["client advantage vs. them — be specific to this client's strengths"],
       "targetSegment": "name of the target market they compete in (must match one of the target markets above)",
-      "pricingModel": "subscription / project-based / freemium / etc."
+      "pricingModel": "subscription / project-based / freemium / etc.",
+      "threatLevel": "high",
+      "edgeTrend": "gaining"
     }
   ],
   "isIndustrySpecific": false
 }
 
+threatLevel values:
+- "high": Well-resourced, strong brand, actively competing for the same accounts, frequently appears in deals
+- "medium": Real competitor but weaker positioning, narrower focus, or inconsistent presence in deals
+- "low": Technically overlaps but rarely appears in deals or has limited scope in this market
+
+edgeTrend values:
+- "gaining": Growing market share, increasing product velocity, recent funding, expanding into new segments
+- "holding": Stable position, no clear growth or decline signals
+- "losing": Losing ground — declining product investment, customers churning, pricing pressure, shrinking focus
+
 Rules:
-- Include exactly 1 competitor per target market — the single most significant direct competitor in that market
-- Maximum 10 competitors total (one per market, capped at 10 markets)
+- Include 1–3 competitors per target market, prioritising direct competitors first then indirect
+- Maximum 15 competitors total across all markets
 - targetSegment must EXACTLY match one of the target market names listed above
 - domain must be the actual website domain (e.g. "hubspot.com")
 - location: city and country only (e.g. "San Francisco, US")
@@ -42,5 +54,6 @@ Rules:
 - whereTheyWin: max 3 items, keep each under 10 words
 - whereClientWins: max 3 items, keep each under 10 words — must be specific to THIS client's strengths
 - valueProp: 1 sentence max, under 20 words
+- threatLevel and edgeTrend must be based on observable signals, not guesses
 - Return ONLY JSON, no markdown.`;
 }
