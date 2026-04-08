@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && prisma generate && next build",
+    "build": "npm run db:baseline && prisma generate && next build",
+    "db:baseline": "(prisma migrate resolve --applied 20260403144907_init || true) && (prisma migrate resolve --applied 20260406000000_add_token_usage || true) && (prisma migrate resolve --applied 20260407000000_remove_cold_email_draft || true) && prisma migrate deploy",
     "start": "next start",
     "lint": "eslint",
     "migrate": "prisma migrate deploy",
