@@ -22,6 +22,8 @@ const bodySchema = z.object({
   industryIdx: z.number().nullable().optional(),
   marketId: z.string().nullable().optional(),
   segmentId: z.string().nullable().optional(),
+  icpIdx: z.number().nullable().optional(),
+  personaIdx: z.number().nullable().optional(),
   prompt: z.string().default(""),
   includeProof: z.boolean().default(true),
   refineMode: z.boolean().default(false),
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { industryIdx, marketId, segmentId, prompt, includeProof, refineMode, existingSubject, existingBody, seq, totalSteps } = parsed.data;
+    const { industryIdx, marketId, segmentId, icpIdx, personaIdx, prompt, includeProof, refineMode, existingSubject, existingBody, seq, totalSteps } = parsed.data;
 
     // Verify ownership + load project and user in parallel
     const [project, user] = await Promise.all([
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         where: { id: projectId, userId: session.user.id },
         include: {
           steps: {
-            where: { stepName: { in: ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "SEGMENTATION"] } },
+            where: { stepName: { in: ["INDUSTRY_PRIORITY", "TARGET_MARKETS", "SEGMENTATION", "ICP"] } },
             select: { stepName: true, output: true },
           },
         },
@@ -123,6 +125,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const tm: any = stepOutputs["TARGET_MARKETS"];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sg: any = stepOutputs["SEGMENTATION"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const icpOutput: any = stepOutputs["ICP"];
 
     const selectedIndustry =
       industryIdx != null ? ip?.industries?.[industryIdx] ?? null : null;
@@ -130,6 +134,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       marketId ? tm?.markets?.find((m: { id: string }) => m.id === marketId) ?? null : null;
     const selectedSegment =
       segmentId ? sg?.segments?.find((s: { id: string }) => s.id === segmentId) ?? null : null;
+    const selectedICP =
+      icpIdx != null ? icpOutput?.icps?.[icpIdx] ?? null : null;
+    const selectedPersona =
+      selectedICP && personaIdx != null ? selectedICP.buyerPersonas?.[personaIdx] ?? null : null;
 
     // Resolve company profile
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,6 +203,24 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parts.push("");
     }
 
+    if (selectedPersona) {
+      parts.push("RECIPIENT PERSONA:");
+      parts.push(`Title: ${selectedPersona.title}`);
+      if (selectedPersona.goals?.length)
+        parts.push(`Goals: ${selectedPersona.goals.join(", ")}`);
+      if (selectedPersona.challenges?.length)
+        parts.push(`Challenges: ${selectedPersona.challenges.join(", ")}`);
+      if (selectedPersona.triggerEvents?.length)
+        parts.push(`Trigger events: ${selectedPersona.triggerEvents.join(", ")}`);
+      parts.push("");
+    } else if (selectedICP) {
+      // ICP selected but no specific persona — still use niche/industry context
+      parts.push("RECIPIENT ICP:");
+      if (selectedICP.niche) parts.push(`Niche: ${selectedICP.niche}`);
+      if (selectedICP.standardIndustry) parts.push(`Industry: ${selectedICP.standardIndustry}`);
+      parts.push("");
+    }
+
     parts.push(`SEQUENCE CONTEXT: This is step ${seq} of ${totalSteps}.`);
     if (seq > 1) {
       parts.push("This is a follow-up email. Reference prior outreach briefly and naturally.");
@@ -219,14 +245,14 @@ The recipient does not know us. Write like this is a first touch from a stranger
 Use this structure:
 
 1. Hook
-Start with a simple and relevant question tied to their buyers, growth goal, hiring challenge, or pipeline problem.
+Start with a simple and relevant question tied to the recipient's role, goals, or known challenges${selectedPersona ? ` — write specifically for a ${selectedPersona.title}` : ""}.
 Do not make strong assumptions.
 Do not sound confrontational.
 The first line should create interest, not pressure.
 
 2. Relevance
 Briefly explain why you reached out.
-Tie it to a likely challenge or priority for their role or company, but use soft language like "seems", "may", "might", or "thought this could be relevant".
+Tie it to a likely challenge or priority for their role or company, but use soft language like "seems", "may", "might", or "thought this could be relevant".${selectedPersona?.challenges?.length ? `\nTheir known challenges include: ${selectedPersona.challenges.slice(0, 2).join(", ")}.` : ""}
 Do not act like you already know their internal situation unless that context is explicitly provided.
 ${includeProof ? `
 3. Proof

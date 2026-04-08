@@ -40,10 +40,13 @@ interface Campaign {
 interface StrategyIndustry { idx: number; label: string; data: Record<string, unknown>; }
 interface StrategyMarket   { id: string;  name: string;  data: Record<string, unknown>; }
 interface StrategySegment  { id: string;  name: string;  data: Record<string, unknown>; }
+interface StrategyPersona  { idx: number; title: string; goals: string[]; challenges: string[]; triggerEvents: string[]; }
+interface StrategyICP      { idx: number; label: string; personas: StrategyPersona[]; }
 interface StrategyData {
   industries: StrategyIndustry[];
   markets:    StrategyMarket[];
   segments:   StrategySegment[];
+  icps:       StrategyICP[];
 }
 
 // ─── Strategy select helper ───────────────────────────────────────────────────
@@ -139,6 +142,8 @@ function StepCard({
   const [selMarket, setSelMarket] = useState<string | null>(null);
   const [selSegment, setSelSegment] = useState<string | null>(null);
   const [composePrompt, setComposePrompt] = useState("");
+  const [selIcpIdx, setSelIcpIdx] = useState<number | null>(null);
+  const [selPersonaIdx, setSelPersonaIdx] = useState<number | null>(null);
   const [includeProof, setIncludeProof] = useState(true);
   const [refineMode, setRefineMode] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -164,6 +169,8 @@ function StepCard({
             industryIdx: selIndustry,
             marketId: selMarket,
             segmentId: selSegment,
+            icpIdx: selIcpIdx,
+            personaIdx: selPersonaIdx,
             prompt: composePrompt,
             includeProof,
             refineMode,
@@ -395,6 +402,28 @@ function StepCard({
               onChange={(v) => setSelSegment(v as string | null)}
             />
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <StrategySelect
+              label="ICP / Niche"
+              options={(strategy?.icps ?? []).map((icp) => ({ id: icp.idx, name: icp.label }))}
+              value={selIcpIdx}
+              onChange={(v) => {
+                const next = v !== null ? Number(v) : null;
+                setSelIcpIdx(next);
+                setSelPersonaIdx(null);
+              }}
+            />
+            <StrategySelect
+              label="Buyer Persona"
+              options={
+                selIcpIdx != null
+                  ? (strategy?.icps?.[selIcpIdx]?.personas ?? []).map((p) => ({ id: p.idx, name: p.title }))
+                  : []
+              }
+              value={selPersonaIdx}
+              onChange={(v) => setSelPersonaIdx(v !== null ? Number(v) : null)}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIncludeProof((p) => !p)}
@@ -547,6 +576,8 @@ export default function CampaignEditorPage({
         const tm = steps.find((s: any) => s.stepName === "TARGET_MARKETS");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sg = steps.find((s: any) => s.stepName === "SEGMENTATION");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const icpStep = steps.find((s: any) => s.stepName === "ICP");
         setStrategy({
           industries: (ip?.output?.industries ?? []).map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -567,6 +598,19 @@ export default function CampaignEditorPage({
             id: s.id ?? s.name,
             name: s.estimatedPriority ? `${s.name} (${s.estimatedPriority})` : s.name,
             data: s,
+          })),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          icps: (icpStep?.output?.icps ?? []).map((icp: any, i: number) => ({
+            idx: i,
+            label: [icp.niche, icp.standardIndustry].filter(Boolean).join(" / ") || `ICP ${i + 1}`,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            personas: (icp.buyerPersonas ?? []).map((p: any, j: number) => ({
+              idx: j,
+              title: p.title ?? `Persona ${j + 1}`,
+              goals: p.goals ?? [],
+              challenges: p.challenges ?? [],
+              triggerEvents: p.triggerEvents ?? [],
+            })),
           })),
         });
       })
