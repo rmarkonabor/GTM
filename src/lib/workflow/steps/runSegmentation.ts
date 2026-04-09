@@ -17,8 +17,8 @@ const schema = z.object({
       industries: z.array(z.string()),
       estimatedPriority: z.enum(["tier-1", "tier-2", "tier-3"]),
       rationale: z.string(),
-      buyingMotion: z.enum(["bottom-up", "top-down", "rfp-driven", "land-expand"]),
-      painMultiplier: z.string(),
+      buyingMotion: z.enum(["bottom-up", "top-down", "rfp-driven", "land-expand"]).optional(),
+      painMultiplier: z.string().optional(),
       positioning: z.object({
         keyPainPoints: z.array(z.string()),
         ourAngle: z.string(),

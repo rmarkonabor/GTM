@@ -113,6 +113,19 @@ export async function POST(
       },
     });
 
+    // When RESEARCH is re-run with AI, immediately sync the refined companyProfile
+    // back to project.companyProfile so repeated edits always refine from the latest
+    // version, not from the original scrape.
+    if (stepName === "RESEARCH") {
+      const draft = output as { companyProfile?: object } | null;
+      if (draft?.companyProfile) {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { companyProfile: draft.companyProfile },
+        });
+      }
+    }
+
     return NextResponse.json({ success: true, output });
   } catch (err) {
     return errorResponse(err);
