@@ -1,5 +1,5 @@
 export function buildTargetMarketsPrompt(context: string): string {
-  return `You are a senior GTM strategist. Based on the company profile, priority industries, and ICP definitions below, identify the best target markets (maximum 5).
+  return `You are a senior GTM strategist. Based on the company profile and priority industries below, identify the best target markets (maximum 5).
 
 ${context}
 

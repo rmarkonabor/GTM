@@ -14,20 +14,21 @@ export function buildStepContext(ctx: WorkflowContext): string {
     });
   }
 
-  // Sections emitted in workflow order so AI reads prior steps before later ones
+  // Sections emitted in workflow execution order so AI reads prior steps before later ones
+  // Order: INDUSTRY_PRIORITY → TARGET_MARKETS → ICP → COMPETITIVE → SEGMENTATION → MANIFESTO
   if (ctx.steps.INDUSTRY_PRIORITY) {
     parts.push("\n=== INDUSTRY PRIORITIES ===");
     parts.push(JSON.stringify(ctx.steps.INDUSTRY_PRIORITY, null, 2));
   }
 
-  if (ctx.steps.ICP) {
-    parts.push("\n=== ICP DEFINITIONS ===");
-    parts.push(JSON.stringify(ctx.steps.ICP, null, 2));
-  }
-
   if (ctx.steps.TARGET_MARKETS) {
     parts.push("\n=== TARGET MARKETS ===");
     parts.push(JSON.stringify(ctx.steps.TARGET_MARKETS, null, 2));
+  }
+
+  if (ctx.steps.ICP) {
+    parts.push("\n=== ICP DEFINITIONS ===");
+    parts.push(JSON.stringify(ctx.steps.ICP, null, 2));
   }
 
   if (ctx.steps.COMPETITIVE) {

@@ -76,6 +76,8 @@ const expandMarketsSchema = z.object({
       importantProblems: z.array(z.string()),
       macroTrends: z.array(z.string()),
       whyRightMarket: z.string(),
+      whyNow: z.string(),
+      whyUs: z.string(),
       priorityScore: z.number(),
     })
   ),
@@ -114,6 +116,8 @@ Return JSON:
       "importantProblems": [...],
       "macroTrends": [...],
       "whyRightMarket": "...",
+      "whyNow": "What specific moment, event, regulatory pressure, or operational breaking point makes this market ready to act today. Be concrete.",
+      "whyUs": "What about our specific product, proof, positioning, or timing gives us an edge that alternatives do not have.",
       "priorityScore": 7
     }
   ]
@@ -121,6 +125,8 @@ Return JSON:
 
 Rules:
 - Market names should be specific enough to use in outreach (not just "SaaS companies")
+- whyNow must be specific — avoid vague statements like "the market is growing". Name the trigger.
+- whyUs must reference this company's actual strengths — avoid generic claims.
 - Return ONLY JSON, no markdown.`;
 
   const model = getLanguageModel(llm.provider, llm.apiKey, "expand-step");
