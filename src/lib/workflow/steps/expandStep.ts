@@ -80,7 +80,7 @@ const expandMarketsSchema = z.object({
       whyUs: z.string(),
       priorityScore: z.number(),
     })
-  ),
+  ).max(5),
 });
 
 export async function expandMarkets(

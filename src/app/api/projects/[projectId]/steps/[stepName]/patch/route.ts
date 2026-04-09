@@ -37,6 +37,18 @@ export async function PATCH(
       data: isAwaiting ? { draftOutput: output as object } : { output: output as object },
     });
 
+    // When RESEARCH is patched, keep project.companyProfile in sync so
+    // subsequent workflow steps always use the latest edited profile.
+    if (stepName === "RESEARCH") {
+      const patched = output as { companyProfile?: object } | null;
+      if (patched?.companyProfile) {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { companyProfile: patched.companyProfile },
+        });
+      }
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err);

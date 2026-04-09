@@ -40,6 +40,18 @@ export async function POST(
       },
     });
 
+    // When RESEARCH is approved, sync the (possibly edited) companyProfile back to the
+    // project record so all subsequent orchestrator steps pick up the refined profile.
+    if (stepName === "RESEARCH") {
+      const draft = step.draftOutput as { companyProfile?: object } | null;
+      if (draft?.companyProfile) {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { companyProfile: draft.companyProfile },
+        });
+      }
+    }
+
     // Reset the immediate next step to PENDING BEFORE firing the workflow so the
     // orchestrator always sees it as runnable (avoids a race where Inngest reads
     // AWAITING_APPROVAL/ERROR before this update and skips it)
