@@ -56,11 +56,11 @@ export async function GET() {
     const llmParsed = llmRaw ? (JSON.parse(llmRaw) as { provider: string; apiKey: string }) : null;
 
     const slRaw = safeDecrypt(user?.smartleadPreference ?? null);
-    const slParsed = slRaw ? (JSON.parse(slRaw) as { apiKey: string }) : null;
+    const slConfigured = !!slRaw;
 
     return NextResponse.json({
-      llm: llmParsed ? { provider: llmParsed.provider, apiKey: llmParsed.apiKey } : null,
-      smartlead: slParsed ? { apiKey: slParsed.apiKey } : null,
+      llm: llmParsed ? { provider: llmParsed.provider, configured: true } : null,
+      smartlead: slConfigured ? { configured: true } : null,
     });
   } catch (err) {
     return errorResponse(err);

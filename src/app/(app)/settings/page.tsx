@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Settings, Save, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Loader2, Settings, Save, Sparkles, CheckCircle2 } from "lucide-react";
 
 const LLM_PROVIDERS = [
   { value: "openai",    label: "OpenAI",             models: "Complex: gpt-4o · Simple: gpt-4o-mini" },
@@ -15,8 +15,8 @@ const LLM_PROVIDERS = [
 ];
 
 interface SettingsData {
-  llm: { provider: string; apiKey: string } | null;
-  smartlead: { apiKey: string } | null;
+  llm: { provider: string; configured: boolean } | null;
+  smartlead: { configured: boolean } | null;
 }
 
 function KeyField({
@@ -25,25 +25,34 @@ function KeyField({
   onChange,
   placeholder,
   hint,
+  configured,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   hint?: string;
+  configured?: boolean;
 }) {
   const [show, setShow] = useState(false);
 
   return (
     <div>
-      <Label className="text-sm text-slate-300">{label}</Label>
-      <div className="relative mt-1.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <Label className="text-sm text-slate-300">{label}</Label>
+        {configured && !value && (
+          <span className="flex items-center gap-1 text-xs text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" /> Saved
+          </span>
+        )}
+      </div>
+      <div className="relative">
         <Input
           type={show ? "text" : "password"}
-          placeholder={placeholder ?? "Paste key here"}
+          placeholder={configured && !value ? "Paste new key to replace" : (placeholder ?? "Paste key here")}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="pr-10 font-mono text-sm bg-slate-800 border-white/15 text-white placeholder:text-slate-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+          className="pr-10 font-mono text-sm bg-slate-800 border-white/15 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
         />
         <button
           type="button"
@@ -64,7 +73,9 @@ export default function SettingsPage() {
   const [savingLlm, setSavingLlm] = useState(false);
   const [savingSl, setSavingSl] = useState(false);
   const [llmProvider, setLlmProvider] = useState("openai");
+  const [llmConfigured, setLlmConfigured] = useState(false);
   const [llmKey, setLlmKey] = useState("");
+  const [slConfigured, setSlConfigured] = useState(false);
   const [slKey, setSlKey] = useState("");
 
   useEffect(() => {
@@ -73,18 +84,24 @@ export default function SettingsPage() {
       .then((data: SettingsData) => {
         if (data.llm) {
           setLlmProvider(data.llm.provider);
-          setLlmKey(data.llm.apiKey);
+          setLlmConfigured(data.llm.configured);
         }
-        if (data.smartlead) {
-          setSlKey(data.smartlead.apiKey);
+        if (data.smartlead?.configured) {
+          setSlConfigured(true);
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
   const saveLlm = async () => {
-    if (!llmKey) {
+    if (!llmKey && !llmConfigured) {
       toast.warning("Enter an API key to save.");
+      return;
+    }
+    if (!llmKey && llmConfigured) {
+      // No new key entered — only update provider if it changed
+      // For now just show success (provider change requires new key validation server-side)
+      toast.info("Enter a new API key to update, or leave blank to keep the current one.");
       return;
     }
     setSavingLlm(true);
@@ -96,6 +113,8 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message);
+      setLlmConfigured(true);
+      setLlmKey("");
       toast.success("LLM settings saved.");
     } catch (err) {
       toast.error((err as Error).message ?? "Failed to save settings.");
@@ -105,8 +124,12 @@ export default function SettingsPage() {
   };
 
   const saveSmartlead = async () => {
-    if (!slKey) {
+    if (!slKey && !slConfigured) {
       toast.warning("Enter a Smartlead API key to save.");
+      return;
+    }
+    if (!slKey && slConfigured) {
+      toast.info("Enter a new API key to update.");
       return;
     }
     setSavingSl(true);
@@ -118,6 +141,8 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message);
+      setSlConfigured(true);
+      setSlKey("");
       toast.success("Smartlead API key saved.");
     } catch (err) {
       toast.error((err as Error).message ?? "Failed to save settings.");
@@ -180,6 +205,7 @@ export default function SettingsPage() {
             onChange={setLlmKey}
             placeholder="sk-..."
             hint="Tiered routing automatically uses the best model for complex tasks (research, ICP, competitive) and a cheaper model for simple ones."
+            configured={llmConfigured}
           />
 
           <Button
@@ -207,6 +233,7 @@ export default function SettingsPage() {
             onChange={setSlKey}
             placeholder="sl-..."
             hint="Used to create campaigns and email sequences from your GTM strategy. Find your API key in Smartlead → Settings → API."
+            configured={slConfigured}
           />
 
           <Button

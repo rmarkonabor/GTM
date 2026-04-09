@@ -6,6 +6,16 @@ import { prisma } from "@/lib/db/client";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  // Disabled in production — only usable in development
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const results: Record<string, unknown> = {};
 
   // Test 1: DB connection
