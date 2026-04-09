@@ -33,7 +33,7 @@ interface Props {
   stepName: string;
   stepLabel: string;
   children: (output: unknown, refresh: () => Promise<void>, editMode: boolean, save: (newOutput: object) => Promise<void>) => React.ReactNode;
-  onApproved?: () => void;
+  onApproved?: (response?: Record<string, unknown>) => void;
 }
 
 async function safeJson(res: Response) {
@@ -104,7 +104,7 @@ export function StepPageWrapper({ projectId, stepName, stepLabel, children, onAp
       if (onApproved) {
         // Brief pause so user sees the green "Approved" state before navigating
         await new Promise((r) => setTimeout(r, 1200));
-        onApproved();
+        onApproved(data as Record<string, unknown>);
       }
     } catch (err) {
       toast.error((err as Error).message);

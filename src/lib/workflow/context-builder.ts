@@ -64,11 +64,23 @@ export async function buildContextFromDB(projectId: string): Promise<WorkflowCon
     }
   }
 
+  // Map answers from { [q.id]: answer } → { [question text]: answer } so the LLM
+  // prompt shows readable questions rather than opaque IDs.
+  const clarifyingQsRaw = project.clarifyingQs as {
+    questions?: Array<{ id: string; question: string }>;
+    answers?: Record<string, string>;
+  } | null;
+  const answersById = clarifyingQsRaw?.answers ?? {};
+  const clarifyingAnswers: Record<string, string> = {};
+  for (const q of (clarifyingQsRaw?.questions ?? [])) {
+    if (answersById[q.id]) clarifyingAnswers[q.question] = answersById[q.id];
+  }
+
   return {
     projectId,
     websiteUrl: project.websiteUrl,
     companyProfile: project.companyProfile as unknown as WorkflowContext["companyProfile"],
-    clarifyingAnswers: (project.clarifyingQs as { answers?: Record<string, string> })?.answers ?? {},
+    clarifyingAnswers,
     businessType: project.businessType ?? "other",
     steps,
   };

@@ -43,12 +43,29 @@ export async function POST(
     // When RESEARCH is approved, sync the (possibly edited) companyProfile back to the
     // project record so all subsequent orchestrator steps pick up the refined profile.
     if (stepName === "RESEARCH") {
-      const draft = step.draftOutput as { companyProfile?: object } | null;
+      const draft = step.draftOutput as { companyProfile?: object; questionsNeeded?: unknown[] } | null;
       if (draft?.companyProfile) {
         await prisma.project.update({
           where: { id: projectId },
           data: { companyProfile: draft.companyProfile },
         });
+      }
+
+      // If the LLM generated clarifying questions, pause and ask the user before
+      // starting the workflow. The project page checks for CLARIFYING status and
+      // renders the question form.
+      const questionsNeeded = draft?.questionsNeeded ?? [];
+      if (questionsNeeded.length > 0) {
+        // Keep existing questions array, reset answers to empty
+        const existingQs = project.clarifyingQs as { questions?: unknown[] } | null;
+        await prisma.project.update({
+          where: { id: projectId },
+          data: {
+            status: "CLARIFYING",
+            clarifyingQs: { questions: existingQs?.questions ?? questionsNeeded, answers: {} },
+          },
+        });
+        return NextResponse.json({ success: true, needsClarification: true });
       }
     }
 
