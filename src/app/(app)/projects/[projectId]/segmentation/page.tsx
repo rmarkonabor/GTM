@@ -3,7 +3,7 @@ import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { EditableText, EditableChips, EditableList } from "@/components/shared/inline-edit";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Building2, BarChart3, Trash2, Target, MessageSquare, Zap } from "lucide-react";
+import { Globe, Building2, BarChart3, Trash2, Target, MessageSquare, Zap, TrendingUp, DollarSign } from "lucide-react";
 
 interface SegmentPositioning {
   keyPainPoints: string[];
@@ -21,6 +21,8 @@ interface Segment {
   industries: string[];
   estimatedPriority: string;
   rationale: string;
+  buyingMotion?: "bottom-up" | "top-down" | "rfp-driven" | "land-expand";
+  painMultiplier?: string;
   positioning?: SegmentPositioning;
 }
 
@@ -35,6 +37,13 @@ const SIZE_COLORS: Record<string, string> = {
   "mid-market": "bg-blue-500/10 text-blue-400",
   smb: "bg-green-500/10 text-green-400",
   startup: "bg-violet-500/10 text-violet-400",
+};
+
+const MOTION_LABELS: Record<string, string> = {
+  "bottom-up": "Bottom-Up",
+  "top-down": "Top-Down",
+  "rfp-driven": "RFP-Driven",
+  "land-expand": "Land & Expand",
 };
 
 export default function SegmentationPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -81,9 +90,15 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                           className="font-bold text-white"
                         />
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <div className="flex items-center gap-2 shrink-0 ml-3 flex-wrap justify-end">
                         <Badge className={PRIORITY_COLORS[String(seg.estimatedPriority ?? "")] ?? ""}>{String(seg.estimatedPriority ?? "")}</Badge>
                         <Badge className={SIZE_COLORS[String(seg.sizeCategory ?? "")] ?? ""}>{String(seg.sizeCategory ?? "")}</Badge>
+                        {seg.buyingMotion && (
+                          <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20">
+                            <TrendingUp className="h-2.5 w-2.5 mr-1" />
+                            {MOTION_LABELS[seg.buyingMotion] ?? seg.buyingMotion}
+                          </Badge>
+                        )}
                         {editMode && (
                           <button
                             onClick={() => remove(seg.id)}
@@ -95,7 +110,7 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                       </div>
                     </div>
 
-                    <div className="mb-4">
+                    <div className="mb-3">
                       <EditableText
                         value={seg.rationale}
                         editMode={editMode}
@@ -104,6 +119,22 @@ export default function SegmentationPage({ params }: { params: Promise<{ project
                         className="text-sm text-slate-400"
                       />
                     </div>
+
+                    {/* Pain Multiplier */}
+                    {(seg.painMultiplier || editMode) && (
+                      <div className="flex items-start gap-2 bg-green-500/5 border border-green-500/20 rounded-lg px-3 py-2 mb-4">
+                        <DollarSign className="h-3.5 w-3.5 text-green-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-xs font-semibold text-green-400 uppercase tracking-wider">Business Impact </span>
+                          <EditableText
+                            value={seg.painMultiplier ?? ""}
+                            editMode={editMode}
+                            onSave={(v) => update(seg.id, { painMultiplier: v })}
+                            className="text-xs text-slate-300 inline"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap gap-4">
                       <div>

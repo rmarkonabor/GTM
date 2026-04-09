@@ -2,7 +2,7 @@
 import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { EditableText, EditableList } from "@/components/shared/inline-edit";
-import { ExternalLink, MapPin, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, CheckCircle2, XCircle, Trash2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Competitor {
@@ -15,7 +15,27 @@ interface Competitor {
   whereClientWins: string[];
   targetSegment: string;
   pricingModel?: string;
+  threatLevel?: "high" | "medium" | "low";
+  edgeTrend?: "gaining" | "holding" | "losing";
 }
+
+const THREAT_COLORS: Record<string, string> = {
+  high: "bg-red-500/10 text-red-400 border-red-500/20",
+  medium: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  low: "bg-green-500/10 text-green-400 border-green-500/20",
+};
+
+const TREND_ICON: Record<string, React.ReactNode> = {
+  gaining: <TrendingUp className="h-3 w-3 text-red-400" />,
+  holding: <Minus className="h-3 w-3 text-slate-400" />,
+  losing: <TrendingDown className="h-3 w-3 text-green-400" />,
+};
+
+const TREND_LABEL: Record<string, string> = {
+  gaining: "Gaining share",
+  holding: "Holding",
+  losing: "Losing share",
+};
 
 export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
@@ -65,9 +85,20 @@ export default function CompetitiveAnalysisPage({ params }: { params: Promise<{ 
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <div className="flex items-center gap-2 shrink-0 ml-3 flex-wrap justify-end">
                       <Badge className="bg-slate-800 text-slate-300 text-xs">{s(c.targetSegment)}</Badge>
                       {c.pricingModel && <Badge variant="outline" className="text-xs">{s(c.pricingModel)}</Badge>}
+                      {c.threatLevel && (
+                        <Badge className={`text-xs border ${THREAT_COLORS[c.threatLevel] ?? ""}`}>
+                          {c.threatLevel} threat
+                        </Badge>
+                      )}
+                      {c.edgeTrend && (
+                        <Badge className="bg-slate-800/50 border border-white/10 text-xs flex items-center gap-1">
+                          {TREND_ICON[c.edgeTrend]}
+                          <span className="text-slate-300">{TREND_LABEL[c.edgeTrend]}</span>
+                        </Badge>
+                      )}
                       {editMode && (
                         <button
                           onClick={() => remove(c.domain)}
