@@ -24,7 +24,7 @@ const bodySchema = z.object({
   segmentId: z.string().nullable().optional(),
   icpIdx: z.number().nullable().optional(),
   personaIdx: z.number().nullable().optional(),
-  prompt: z.string().default(""),
+  prompt: z.string().max(5000).default(""),
   includeProof: z.boolean().default(true),
   refineMode: z.boolean().default(false),
   existingSubject: z.string().optional(),

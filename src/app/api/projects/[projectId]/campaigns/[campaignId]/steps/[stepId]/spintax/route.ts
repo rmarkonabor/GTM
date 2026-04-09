@@ -19,8 +19,8 @@ type RouteParams = {
 };
 
 const bodySchema = z.object({
-  subject: z.string(),
-  body: z.string(),
+  subject: z.string().max(500),
+  body: z.string().max(5000),
 });
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
