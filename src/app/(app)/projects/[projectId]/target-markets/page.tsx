@@ -4,7 +4,7 @@ import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { EditableText, EditableList } from "@/components/shared/inline-edit";
 import { ExpandPanel } from "@/components/shared/ExpandPanel";
-import { TrendingUp, AlertTriangle, Info, Trash2 } from "lucide-react";
+import { TrendingUp, AlertTriangle, Info, Zap, Shield, Trash2 } from "lucide-react";
 
 interface TargetMarket {
   id: string;
@@ -13,6 +13,8 @@ interface TargetMarket {
   importantProblems: string[];
   macroTrends: string[];
   whyRightMarket: string;
+  whyNow?: string;
+  whyUs?: string;
   priorityScore: number;
 }
 
@@ -68,6 +70,7 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                     </div>
 
                     <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Why this market</p>
                       <EditableText
                         value={market.whyRightMarket}
                         editMode={editMode}
@@ -76,6 +79,42 @@ export default function TargetMarketsPage({ params }: { params: Promise<{ projec
                         className="text-sm text-slate-400"
                       />
                     </div>
+
+                    {/* Why Now + Why Us */}
+                    {(market.whyNow || market.whyUs || editMode) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        {(market.whyNow || editMode) && (
+                          <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Zap className="h-3.5 w-3.5 text-amber-400" />
+                              <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Why Now</h4>
+                            </div>
+                            <EditableText
+                              value={market.whyNow ?? ""}
+                              editMode={editMode}
+                              onSave={(v) => update(market.id, { whyNow: v })}
+                              multiline
+                              className="text-sm text-slate-300"
+                            />
+                          </div>
+                        )}
+                        {(market.whyUs || editMode) && (
+                          <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg p-4">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Shield className="h-3.5 w-3.5 text-violet-400" />
+                              <h4 className="text-xs font-semibold text-violet-400 uppercase tracking-wider">Why Us</h4>
+                            </div>
+                            <EditableText
+                              value={market.whyUs ?? ""}
+                              editMode={editMode}
+                              onSave={(v) => update(market.id, { whyUs: v })}
+                              multiline
+                              className="text-sm text-slate-300"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>

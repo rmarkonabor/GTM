@@ -4,7 +4,7 @@ import { use } from "react";
 import { StepPageWrapper } from "@/components/shared/StepPageWrapper";
 import { EditableText, EditableChips, EditableList } from "@/components/shared/inline-edit";
 import { Badge } from "@/components/ui/badge";
-import { Building2, User, MapPin, Cpu, DollarSign, Target, Tag, Trash2 } from "lucide-react";
+import { Building2, User, MapPin, Cpu, DollarSign, Target, Tag, Trash2, XCircle, CheckCircle2, Tag as TagIcon } from "lucide-react";
 
 interface Firmographics {
   companySize: string[];
@@ -13,6 +13,7 @@ interface Firmographics {
   industries: string[];
   technologies: string[];
   businessModels: string[];
+  apolloKeywordTags?: string[];
 }
 
 interface BuyerPersona {
@@ -28,9 +29,19 @@ interface ICPDefinition {
   standardIndustry: string;
   niche: string;
   keywords: string[];
+  engagementModel?: "champion" | "champion-committee" | "consensus" | "executive-top-down";
+  decisionCriteria?: string[];
+  lossReasons?: string[];
   firmographics: Firmographics;
   buyerPersonas: BuyerPersona[];
 }
+
+const ENGAGEMENT_LABELS: Record<string, string> = {
+  "champion": "Champion-led",
+  "champion-committee": "Champion + Committee",
+  "consensus": "Consensus",
+  "executive-top-down": "Executive Top-Down",
+};
 
 export default function ICPPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
@@ -108,15 +119,58 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                         )}
                       </div>
                     </div>
-                    {editMode && (
-                      <button
-                        onClick={() => removeIcp(idx)}
-                        className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {icp.engagementModel && (
+                        <Badge className="bg-slate-800 text-slate-300 border border-white/10 text-xs">
+                          {ENGAGEMENT_LABELS[icp.engagementModel] ?? icp.engagementModel}
+                        </Badge>
+                      )}
+                      {editMode && (
+                        <button
+                          onClick={() => removeIcp(idx)}
+                          className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Decision Criteria + Loss Reasons */}
+                  {((icp.decisionCriteria?.length ?? 0) > 0 || (icp.lossReasons?.length ?? 0) > 0 || editMode) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {((icp.decisionCriteria?.length ?? 0) > 0 || editMode) && (
+                        <div className="bg-slate-900 border border-white/10 rounded-xl p-5">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
+                            <h3 className="text-sm font-semibold text-slate-300">Decision Criteria</h3>
+                          </div>
+                          <EditableList
+                            items={icp.decisionCriteria ?? []}
+                            onSave={(v) => updateIcp(idx, { decisionCriteria: v })}
+                            editMode={editMode}
+                            dotColor="bg-green-400"
+                            textClass="text-sm text-slate-400"
+                          />
+                        </div>
+                      )}
+                      {((icp.lossReasons?.length ?? 0) > 0 || editMode) && (
+                        <div className="bg-slate-900 border border-white/10 rounded-xl p-5">
+                          <div className="flex items-center gap-2 mb-3">
+                            <XCircle className="h-4 w-4 text-red-400" />
+                            <h3 className="text-sm font-semibold text-slate-300">Why Deals Are Lost</h3>
+                          </div>
+                          <EditableList
+                            items={icp.lossReasons ?? []}
+                            onSave={(v) => updateIcp(idx, { lossReasons: v })}
+                            editMode={editMode}
+                            dotColor="bg-red-400"
+                            textClass="text-sm text-slate-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Firmographics */}
                   <div className="bg-slate-900 border border-white/10 rounded-xl p-6 mb-4">
@@ -153,6 +207,22 @@ export default function ICPPage({ params }: { params: Promise<{ projectId: strin
                         </div>
                       ))}
                     </div>
+
+                    {/* Apollo Keyword Tags */}
+                    {((icp.firmographics.apolloKeywordTags?.length ?? 0) > 0 || editMode) && (
+                      <div className="mt-4 pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <TagIcon className="h-3 w-3 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Apollo Keyword Tags</span>
+                        </div>
+                        <EditableChips
+                          items={icp.firmographics.apolloKeywordTags ?? []}
+                          onSave={(v) => updateFirmo(idx, "apolloKeywordTags", v)}
+                          editMode={editMode}
+                          chipClass="bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Buyer Personas */}
