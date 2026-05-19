@@ -255,47 +255,44 @@ The recipient does not know us. Write like this is a first touch from a stranger
 Use this structure:
 
 1. Hook
-Start with a simple and relevant question tied to the recipient's role, goals, or known challenges${selectedPersona ? ` — write specifically for a ${selectedPersona.title}` : ""}.
-Do not make strong assumptions.
-Do not sound confrontational.
-The first line should create interest, not pressure.
+Write one short, specific question that speaks directly to the recipient's world — their role, their team, their priorities, or a challenge they are likely living right now.
+${selectedPersona ? `Write specifically for a ${selectedPersona.title}.` : ""}
+The hook must be about THEM, not about us or what we do.
+Do NOT mention sales, marketing, outreach, or anything that signals this is a pitch.
+Do NOT open with a compliment, a company name drop, or a statement about their growth.
+Use "you" or "your" to make it feel personal and direct.
+The reader should finish the first line thinking "how did they know that?" not "here comes a sales email."
 
 2. Relevance
-Briefly explain why you reached out.
-Tie it to a likely challenge or priority for their role or company, but use soft language like "seems", "may", "might", or "thought this could be relevant".${selectedPersona?.challenges?.length ? `\nTheir known challenges include: ${selectedPersona.challenges.slice(0, 2).join(", ")}.` : ""}
-Do not act like you already know their internal situation unless that context is explicitly provided.
+In one or two sentences, connect their likely situation to why you are reaching out.
+Write from their perspective — use "you", "your team", "your buyers", "your pipeline".
+Use soft, respectful language: "thought this might be relevant", "seemed worth a quick note", "not sure if it applies to you".${selectedPersona?.challenges?.length ? `\nTheir known challenges: ${selectedPersona.challenges.slice(0, 2).join(", ")}.` : ""}
+Do not assume you know their internal situation. Invite them in, do not tell them what their problem is.
 ${includeProof ? `
 3. Proof
-Include one short and believable proof point.
-This can be a relevant example, customer type, result, audience detail, or market pattern.
-Keep it light.
-Do not over explain.
-Do not stack multiple proof points.
+One short, grounded proof point that supports why this is relevant to someone in their position.
+Anchor it to their reality, not our achievements — frame it as "others like you" or "companies in your space" rather than "we have X customers".
+Keep it one sentence. Do not stack claims.
 
 4. Soft CTA` : `
 3. Soft CTA`}
-End with one low friction question.
-The CTA should feel easy to answer, like:
-"Open to a quick look?"
-"Worth a quick chat?"
-"Want me to send a few details?"
-Avoid asking for a long meeting in the first email.
+End with a single low-friction question that is easy to answer yes or no.
+Make it about them: "Would that be useful for your team?", "Open to a quick look?", "Worth a brief chat?"
+Do not ask for a meeting, a demo, or a call in the first touch.
 
 Rules:
 Use {{FirstName}} and {{CompanyName}} exactly as placeholders.
-Write a punchy subject line under 10 words.
+Write a punchy subject line under 10 words — make it feel like something a colleague would send, not a sales tool.
 Keep the body under 120 words.
-Make it casual, direct, and human.
-The email should feel like it is opening a conversation, not trying to close one.
-Focus on their problem or priority more than our offer.
-Do not use filler phrases like "I hope this finds you well."
-Do not use aggressive or overly confident language.
-Do not use pressure tactics.
-Do not sound like a pitch deck.
-Do not mention features too early.
-Do not use phrases like "replace headcount", "book a 30 minute call", "ARR momentum", or anything that feels too salesy for a first touch.
-Do not reference funding, hiring, layoffs, or recent news unless that context is explicitly provided and clearly relevant.
-Only include one CTA.${!includeProof ? `
+Use "you" and "your" throughout — the ratio of "you" to "we/our" should heavily favour the reader.
+Make every sentence about their world, their priorities, their outcomes.
+Sound like a human who did their homework, not a tool that ran a sequence.
+No filler openers. No "I hope this finds you well", "I came across your profile", or "I wanted to reach out".
+No pressure, no urgency tactics, no pitch deck language.
+No feature lists, no product names in the first two sentences.
+Do not use phrases like "replace headcount", "book a 30 minute call", "ARR momentum", "revolutionize", or "game-changer".
+Do not reference funding, hiring, layoffs, or recent news unless that context is explicitly provided.
+Only one CTA.${!includeProof ? `
 Do NOT include a proof point, credibility statement, customer reference, or any claim about past results. The email must have exactly 3 parts: Hook, Relevance, and Soft CTA only.` : ""}`
     );
 
